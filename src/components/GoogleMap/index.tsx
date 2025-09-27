@@ -12,33 +12,29 @@ import {
 import { MarkerClusterer } from '@googlemaps/markerclusterer';
 import type { Marker } from '@googlemaps/markerclusterer';
 
-// Sample locations for demonstration
-type Poi = { key: string, location: google.maps.LatLngLiteral };
+interface Location {
+    id: string;
+    name: string;
+    address: string;
+    location: {
+        lat: number;
+        lng: number;
+    };
+    rating?: number;
+    priceLevel?: number;
+    types?: string[];
+}
 
-const locations: Poi[] = [
-    { key: 'operaHouse', location: { lat: -33.8567844, lng: 151.213108 } },
-    { key: 'tarongaZoo', location: { lat: -33.8472767, lng: 151.2188164 } },
-    { key: 'manlyBeach', location: { lat: -33.8209738, lng: 151.2563253 } },
-    { key: 'hyderPark', location: { lat: -33.8690081, lng: 151.2052393 } },
-    { key: 'theRocks', location: { lat: -33.8587568, lng: 151.2058246 } },
-    { key: 'circularQuay', location: { lat: -33.858761, lng: 151.2055688 } },
-    { key: 'harbourBridge', location: { lat: -33.852228, lng: 151.2038374 } },
-    { key: 'kingsCross', location: { lat: -33.8737375, lng: 151.222569 } },
-    { key: 'botanicGardens', location: { lat: -33.864167, lng: 151.216387 } },
-    { key: 'museumOfSydney', location: { lat: -33.8636005, lng: 151.2092542 } },
-    { key: 'maritimeMuseum', location: { lat: -33.869395, lng: 151.198648 } },
-    { key: 'kingStreetWharf', location: { lat: -33.8665445, lng: 151.1989808 } },
-    { key: 'aquarium', location: { lat: -33.869627, lng: 151.202146 } },
-    { key: 'darlingHarbour', location: { lat: -33.87488, lng: 151.1987113 } },
-    { key: 'barangaroo', location: { lat: -33.8605523, lng: 151.1972205 } },
-];
+interface GoogleMapProps {
+    apiKey: string;
+}
 
-const PoiMarkers = (props: { pois: Poi[] }) => {
+const LocationMarkers = ({ locations }: { locations: Location[] }) => {
     const map = useMap();
     const [markers, setMarkers] = useState<{ [key: string]: Marker }>({});
     const clusterer = useRef<MarkerClusterer | null>(null);
 
-    // Initialize MarkerClusterer, if the map has changed
+    // Initialize MarkerClusterer
     useEffect(() => {
         if (!map) return;
         if (!clusterer.current) {
@@ -46,7 +42,7 @@ const PoiMarkers = (props: { pois: Poi[] }) => {
         }
     }, [map]);
 
-    // Update markers, if the markers array has changed
+    // Update markers
     useEffect(() => {
         clusterer.current?.clearMarkers();
         clusterer.current?.addMarkers(Object.values(markers));
@@ -67,38 +63,86 @@ const PoiMarkers = (props: { pois: Poi[] }) => {
         });
     };
 
-    const handleClick = useCallback((ev: google.maps.MapMouseEvent) => {
+    const handleClick = useCallback((location: Location) => {
         if (!map) return;
-        if (!ev.latLng) return;
-        console.log('marker clicked:', ev.latLng.toString());
-        map.panTo(ev.latLng);
+        console.log('Location clicked:', location.name);
+        map.panTo(location.location);
     }, [map]);
 
     return (
         <>
-            {props.pois.map((poi: Poi) => (
+            {locations.map((location) => (
                 <AdvancedMarker
-                    key={poi.key}
-                    position={poi.location}
-                    ref={marker => setMarkerRef(marker, poi.key)}
+                    key={location.id}
+                    position={location.location}
+                    ref={marker => setMarkerRef(marker, location.id)}
                     clickable={true}
-                    onClick={handleClick}
+                    onClick={() => handleClick(location)}
                 >
-                    <Pin background={'#FBBC04'} glyphColor={'#000'} borderColor={'#000'} />
+                    <Pin
+                        background={'#4285F4'}
+                        glyphColor={'#fff'}
+                        borderColor={'#fff'}
+                        scale={1.2}
+                    />
                 </AdvancedMarker>
             ))}
         </>
     );
 };
 
-interface GoogleMapProps {
-    apiKey: string;
-}
-
 export default function GoogleMapComponent({ apiKey }: GoogleMapProps) {
+    const [center, setCenter] = useState<{ lat: number; lng: number } | null>(null);
+
     // Debug logging
     console.log('API Key received:', apiKey ? `${apiKey.substring(0, 10)}...` : 'undefined');
     console.log('Environment variable:', process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? `${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY.substring(0, 10)}...` : 'undefined');
+
+    // No need to fetch locations since we're not showing markers
+
+    // Get user location on mount and every 15 seconds
+    useEffect(() => {
+        const getLocation = () => {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const userLocation = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        };
+                        setCenter(userLocation);
+                    },
+                    (error) => {
+                        console.error('Error getting location:', error);
+                        // Fallback to default location
+                        const defaultLocation = { lat: -34.6037, lng: -58.3816 };
+                        setCenter(defaultLocation);
+                    }
+                );
+            } else {
+                // Fallback to default location
+                const defaultLocation = { lat: -34.6037, lng: -58.3816 };
+                setCenter(defaultLocation);
+            }
+        };
+
+        // Get location immediately
+        getLocation();
+
+        // Set up interval to get location every 15 seconds
+        const interval = setInterval(getLocation, 15000);
+
+        // Cleanup interval on unmount
+        return () => clearInterval(interval);
+    }, []);
+
+    const handleCameraChanged = useCallback((ev: MapCameraChangedEvent) => {
+        const newCenter = ev.detail.center;
+        if (newCenter) {
+            setCenter({ lat: newCenter.lat, lng: newCenter.lng });
+            // No need to fetch locations
+        }
+    }, []);
 
     if (!apiKey || apiKey === 'your_api_key_here') {
         return (
@@ -125,25 +169,24 @@ export default function GoogleMapComponent({ apiKey }: GoogleMapProps) {
             onLoad={() => console.log('Maps API has loaded.')}
             onError={(error) => console.error('Maps API Error:', error)}
         >
-            <Map
-                defaultZoom={13}
-                defaultCenter={{ lat: -33.860664, lng: 151.208138 }}
-                mapId="3713b663965620613d3040ef"
-                gestureHandling="greedy"
-                disableDefaultUI={true}
-                zoomControl={false}
-                mapTypeControl={false}
-                scaleControl={false}
-                streetViewControl={false}
-                rotateControl={false}
-                fullscreenControl={false}
-                onCameraChanged={(ev: MapCameraChangedEvent) =>
-                    console.log('camera changed:', ev.detail.center, 'zoom:', ev.detail.zoom)
-                }
-                className="h-full w-full"
-            >
-                <PoiMarkers pois={locations} />
-            </Map>
+            {center && (
+                <Map
+                    defaultZoom={13}
+                    defaultCenter={center}
+                    mapId="31053bcd540af9d8ebbb6e83"
+                    gestureHandling="greedy"
+                    disableDefaultUI={true}
+                    zoomControl={false}
+                    mapTypeControl={false}
+                    scaleControl={false}
+                    streetViewControl={false}
+                    rotateControl={false}
+                    fullscreenControl={false}
+                    onCameraChanged={handleCameraChanged}
+                    className="h-full w-full"
+                >
+                </Map>
+            )}
         </APIProvider>
     );
 }

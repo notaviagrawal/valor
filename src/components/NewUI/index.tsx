@@ -28,8 +28,11 @@ export default function NewUI() {
     // Handle click outside to close search
     const handleClickOutside = (e: React.MouseEvent) => {
         if (isSearchExpanded && e.target === e.currentTarget) {
-            setIsSearchExpanded(false);
+            // Close search smoothly
             setSearchValue('');
+            setTimeout(() => {
+                setIsSearchExpanded(false);
+            }, 100);
         }
     };
 
@@ -41,6 +44,28 @@ export default function NewUI() {
         }
         setIsSearchExpanded(false);
         setSearchValue('');
+    };
+
+    // Handle keyboard events
+    const handleKeyPress = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            handleSearchSubmit();
+        } else if (e.key === 'Escape') {
+            setSearchValue('');
+            setTimeout(() => {
+                setIsSearchExpanded(false);
+            }, 100);
+        }
+    };
+
+    // Handle iOS Done button
+    const handleInputBlur = () => {
+        if (isSearchExpanded) {
+            setSearchValue('');
+            setTimeout(() => {
+                setIsSearchExpanded(false);
+            }, 100);
+        }
     };
 
     const renderContent = () => {
@@ -183,18 +208,18 @@ export default function NewUI() {
                                     <div className="relative h-10">
                                         <div
                                             className={`flex items-center justify-center bg-white/20 backdrop-blur-md border border-white/30 cursor-pointer transition-all duration-500 ease-in-out hover:bg-white/30 absolute top-0 z-30 ${isSearchExpanded
-                                                ? 'w-full rounded-full px-4 py-3 h-12'
+                                                ? 'w-full rounded-full px-4 py-2 h-10'
                                                 : 'w-10 h-10 rounded-full'
                                                 }`}
                                             onClick={() => setIsSearchExpanded(!isSearchExpanded)}
                                         >
                                             {!isSearchExpanded ? (
-                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-white flex-shrink-0">
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-black flex-shrink-0">
                                                     <path d="M11 19C15.4183 19 19 15.4183 19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                                     <path d="M20.9999 21.0004L16.6499 16.6504" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                                 </svg>
                                             ) : (
-                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-white flex-shrink-0">
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-black flex-shrink-0">
                                                     <path d="M11 19C15.4183 19 19 15.4183 19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                                     <path d="M20.9999 21.0004L16.6499 16.6504" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                                 </svg>
@@ -207,7 +232,8 @@ export default function NewUI() {
                                                 placeholder="Search..."
                                                 value={searchValue}
                                                 onChange={(e) => setSearchValue(e.target.value)}
-                                                onKeyPress={(e) => e.key === 'Enter' && handleSearchSubmit()}
+                                                onKeyDown={handleKeyPress}
+                                                onBlur={handleInputBlur}
                                                 className={`bg-transparent text-white placeholder-white/70 outline-none transition-all duration-500 ease-in-out ${isSearchExpanded
                                                     ? 'w-full ml-4 opacity-100'
                                                     : 'w-0 ml-0 opacity-0'
@@ -220,7 +246,7 @@ export default function NewUI() {
                                                     onClick={handleSearchSubmit}
                                                     className="ml-2 p-1 hover:bg-white/20 rounded-full transition-colors"
                                                 >
-                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-white">
+                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-black">
                                                         <path d="M5 12H19M12 5L19 12L12 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                                     </svg>
                                                 </button>
@@ -230,8 +256,8 @@ export default function NewUI() {
                                 </div>
 
                                 {/* Profile Icon - Standardized positioning */}
-                                <div className="w-7 h-7 flex items-center justify-center cursor-pointer relative z-20" onClick={() => setShowProfile(true)}>
-                                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="text-white">
+                                <div className="w-10 h-10 flex items-center justify-center cursor-pointer relative z-20 bg-white/20 backdrop-blur-md border border-white/30 rounded-full" onClick={() => setShowProfile(true)}>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-black">
                                         <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                         <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                     </svg>
@@ -249,18 +275,18 @@ export default function NewUI() {
                             <div className="flex items-center justify-between">
                                 {/* Notifications Icon - Using World UI Kit styling */}
                                 <div
-                                    className="w-11 h-11 flex items-center justify-center cursor-pointer bg-[#E9E9EB] rounded-full"
+                                    className="w-10 h-10 flex items-center justify-center cursor-pointer bg-white/20 backdrop-blur-md border border-white/30 rounded-full"
                                     onClick={() => setShowNotifications(true)}
                                 >
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-[#1C1C1E]">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-black">
                                         <path d="M18 8C18 6.4087 17.3679 4.88258 16.2426 3.75736C15.1174 2.63214 13.5913 2 12 2C10.4087 2 8.88258 2.63214 7.75736 3.75736C6.63214 4.88258 6 6.4087 6 8C6 15 3 17 3 17H21C21 17 18 15 18 8Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                         <path d="M13.73 21C13.5542 21.3031 13.3019 21.5547 12.9982 21.7295C12.6946 21.9044 12.3504 21.9965 12 21.9965C11.6496 21.9965 11.3054 21.9044 11.0018 21.7295C10.6982 21.5547 10.4458 21.3031 10.27 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                     </svg>
                                 </div>
 
                                 {/* Profile Icon - Standardized positioning */}
-                                <div className="w-7 h-7 flex items-center justify-center cursor-pointer" onClick={() => setShowProfile(true)}>
-                                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="text-[#1C1C1E]">
+                                <div className="w-10 h-10 flex items-center justify-center cursor-pointer bg-white/20 backdrop-blur-md border border-white/30 rounded-full" onClick={() => setShowProfile(true)}>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-black">
                                         <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                         <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                     </svg>
@@ -297,18 +323,18 @@ export default function NewUI() {
                                     <div className="relative h-10">
                                         <div
                                             className={`flex items-center justify-center bg-white/20 backdrop-blur-md border border-slate-800 cursor-pointer transition-all duration-500 ease-in-out hover:bg-white/30 absolute top-0 z-30 ${isSearchExpanded
-                                                ? 'w-full rounded-full px-4 py-3 h-12'
+                                                ? 'w-full rounded-full px-4 py-2 h-10'
                                                 : 'w-10 h-10 rounded-full'
                                                 }`}
                                             onClick={() => setIsSearchExpanded(!isSearchExpanded)}
                                         >
                                             {!isSearchExpanded ? (
-                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-slate-600 flex-shrink-0">
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-black flex-shrink-0">
                                                     <path d="M11 19C15.4183 19 19 15.4183 19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                                     <path d="M20.9999 21.0004L16.6499 16.6504" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                                 </svg>
                                             ) : (
-                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-slate-600 flex-shrink-0">
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-black flex-shrink-0">
                                                     <path d="M11 19C15.4183 19 19 15.4183 19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                                     <path d="M20.9999 21.0004L16.6499 16.6504" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                                 </svg>
@@ -321,8 +347,9 @@ export default function NewUI() {
                                                 placeholder="Search..."
                                                 value={searchValue}
                                                 onChange={(e) => setSearchValue(e.target.value)}
-                                                onKeyPress={(e) => e.key === 'Enter' && handleSearchSubmit()}
-                                                className={`bg-transparent text-slate-700 placeholder-slate-500 outline-none transition-all duration-500 ease-in-out ${isSearchExpanded
+                                                onKeyDown={handleKeyPress}
+                                                onBlur={handleInputBlur}
+                                                className={`bg-transparent text-black placeholder-gray-500 outline-none transition-all duration-500 ease-in-out ${isSearchExpanded
                                                     ? 'w-full ml-4 opacity-100'
                                                     : 'w-0 ml-0 opacity-0'
                                                     }`}
@@ -334,7 +361,7 @@ export default function NewUI() {
                                                     onClick={handleSearchSubmit}
                                                     className="ml-2 p-1 hover:bg-white/20 rounded-full transition-colors"
                                                 >
-                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-slate-600">
+                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-black">
                                                         <path d="M5 12H19M12 5L19 12L12 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                                     </svg>
                                                 </button>
@@ -344,8 +371,8 @@ export default function NewUI() {
                                 </div>
 
                                 {/* Profile Icon - Standardized positioning */}
-                                <div className="w-7 h-7 flex items-center justify-center cursor-pointer relative z-20" onClick={() => setShowProfile(true)}>
-                                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="text-[#1C1C1E]">
+                                <div className="w-10 h-10 flex items-center justify-center cursor-pointer relative z-20 bg-white/20 backdrop-blur-md border border-white/30 rounded-full" onClick={() => setShowProfile(true)}>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-black">
                                         <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                         <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                     </svg>
