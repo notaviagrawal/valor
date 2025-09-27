@@ -1,14 +1,8 @@
-import { Page } from '@/components/PageLayout';
-import { AuthButton } from '../components/AuthButton';
-import { MiniKitTest } from '../components/MiniKitTest';
+// TEMPORARY: Redirecting to new design for UI development
+// Original code is preserved in src/app-backup/page.tsx
+import { redirect } from 'next/navigation';
 
 export default function Home() {
-  return (
-    <Page>
-      <Page.Main className="flex flex-col items-center justify-center space-y-8">
-        <MiniKitTest />
-        <AuthButton />
-      </Page.Main>
-    </Page>
-  );
+  // Redirect to new design for testing
+  redirect('/new-design');
 }
