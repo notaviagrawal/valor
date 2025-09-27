@@ -13,6 +13,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@googlemaps/markerclusterer": "^2.6.2",
+    "@vis.gl/react-google-maps": "^1.5.5",
     "@worldcoin/mini-apps-ui-kit-react": "^1.3.5",
     "@worldcoin/minikit-js": "latest",
     "@worldcoin/minikit-react": "latest",
