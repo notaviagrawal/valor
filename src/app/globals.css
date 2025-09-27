@@ -26,6 +26,11 @@ body {
   overscroll-behavior: none;
   overflow: hidden;
   -webkit-overflow-scrolling: touch;
+  /* Disable zoom on the entire website */
+  touch-action: pan-x pan-y;
+  zoom: 1;
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
 }
 
 body {
