@@ -1,4 +1,3 @@
-import { hashNonce } from '@/auth/wallet/client-helpers';
 import {
   MiniAppWalletAuthSuccessPayload,
   MiniKit,
@@ -27,7 +26,8 @@ declare module 'next-auth' {
 // For more information on each option (and a full list of options) go to
 // https://authjs.dev/getting-started/authentication/credentials
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: process.env.AUTH_SECRET,
+  trustHost: true, // Allow any host in development
   session: { strategy: 'jwt' },
   providers: [
     Credentials({
@@ -47,28 +47,29 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         signedNonce: string;
         finalPayloadJson: string;
       }) => {
-        const expectedSignedNonce = hashNonce({ nonce });
+        try {
+          const finalPayload: MiniAppWalletAuthSuccessPayload =
+            JSON.parse(finalPayloadJson);
 
-        if (signedNonce !== expectedSignedNonce) {
-          console.log('Invalid signed nonce');
+          // Verify the SIWE message
+          const result = await verifySiweMessage(finalPayload, nonce);
+
+          if (!result.isValid || !result.siweMessageData.address) {
+            console.log('Invalid final payload');
+            return null;
+          }
+
+          // Optionally, fetch the user info from your own database
+          const userInfo = await MiniKit.getUserInfo(finalPayload.address);
+
+          return {
+            id: finalPayload.address,
+            ...userInfo,
+          };
+        } catch (error) {
+          console.error('Authorization error:', error);
           return null;
         }
-
-        const finalPayload: MiniAppWalletAuthSuccessPayload =
-          JSON.parse(finalPayloadJson);
-        const result = await verifySiweMessage(finalPayload, nonce);
-
-        if (!result.isValid || !result.siweMessageData.address) {
-          console.log('Invalid final payload');
-          return null;
-        }
-        // Optionally, fetch the user info from your own database
-        const userInfo = await MiniKit.getUserInfo(finalPayload.address);
-
-        return {
-          id: finalPayload.address,
-          ...userInfo,
-        };
       },
     }),
   ],
@@ -86,9 +87,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     session: async ({ session, token }) => {
       if (token.userId) {
         session.user.id = token.userId as string;
-        session.user.walletAddress = (token as any).walletAddress as string;
-        session.user.username = (token as any).username as string;
-        session.user.profilePictureUrl = (token as any).profilePictureUrl as string;
+        session.user.walletAddress = token.address as string;
+        session.user.username = token.username as string;
+        session.user.profilePictureUrl = token.profilePictureUrl as string;
       }
 
       return session;

@@ -1,8 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Button } from '@worldcoin/mini-apps-ui-kit-react';
 import { getProductsForCountry } from '../../lib/country-utils';
+import dynamic from 'next/dynamic';
+
+const Transaction = dynamic(() => import('../Transaction').then((mod) => mod.Transaction), {
+  ssr: false,
+});
 
 interface StorePageProps {
   storeName: string;
@@ -16,7 +21,12 @@ export default function StorePage({ storeName, storeId, country, storeType = 'gr
   const [selectedProduct, setSelectedProduct] = useState<string | null>(storeType === 'gas' ? 'regular' : null);
   const [price, setPrice] = useState<string>('');
 
-  const availableProducts = storeType === 'gas' 
+  const productLabel = useMemo(
+    () => (selectedProduct ? selectedProduct.charAt(0).toUpperCase() + selectedProduct.slice(1) : ''),
+    [selectedProduct],
+  );
+
+  const availableProducts = storeType === 'gas'
     ? ['regular', 'premium', 'diesel']
     : getProductsForCountry(country);
 
@@ -63,24 +73,23 @@ export default function StorePage({ storeName, storeId, country, storeType = 'gr
           {availableProducts.map((product, index) => (
             <div
               key={product}
-              className={`px-4 py-3 rounded-full font-medium text-sm transition-all duration-300 cursor-pointer font-inter flex items-center gap-2 flex-shrink-0 ${
-                selectedProduct === product
+              className={`px-4 py-3 rounded-full font-medium text-sm transition-all duration-300 cursor-pointer font-inter flex items-center gap-2 flex-shrink-0 ${selectedProduct === product
                   ? 'bg-[#1C1C1E] text-white'
                   : 'bg-[#E0E0E0] text-[#1C1C1E]'
-              }`}
+                }`}
               onClick={() => setSelectedProduct(product)}
             >
               <span className="text-base">
                 {storeType === 'gas' ? (
                   product === 'regular' ? '⛽' :
-                  product === 'premium' ? '⛽' :
-                  product === 'diesel' ? '⛽' : '⛽'
+                    product === 'premium' ? '⛽' :
+                      product === 'diesel' ? '⛽' : '⛽'
                 ) : (
-                  product === 'bananas' ? '🍌' : 
-                  product === 'beef' ? '🥩' : 
-                  product === 'pork' ? '🥓' : 
-                  product === 'apples' ? '🍎' : 
-                  product === 'pears' ? '🍐' : '📦'
+                  product === 'bananas' ? '🍌' :
+                    product === 'beef' ? '🥩' :
+                      product === 'pork' ? '🥓' :
+                        product === 'apples' ? '🍎' :
+                          product === 'pears' ? '🍐' : '📦'
                 )}
               </span>
               {product.charAt(0).toUpperCase() + product.slice(1)}
@@ -97,10 +106,10 @@ export default function StorePage({ storeName, storeId, country, storeType = 'gr
               <span className="text-6xl">
                 {storeType === 'gas' ? '⛽' : (
                   selectedProduct === 'bananas' ? '🍌' :
-                  selectedProduct === 'beef' ? '🥩' :
-                  selectedProduct === 'pork' ? '🥓' :
-                  selectedProduct === 'apples' ? '🍎' :
-                  selectedProduct === 'pears' ? '🍐' : '📦'
+                    selectedProduct === 'beef' ? '🥩' :
+                      selectedProduct === 'pork' ? '🥓' :
+                        selectedProduct === 'apples' ? '🍎' :
+                          selectedProduct === 'pears' ? '🍐' : '📦'
                 )}
               </span>
             </div>
@@ -129,18 +138,8 @@ export default function StorePage({ storeName, storeId, country, storeType = 'gr
             </div>
 
             <div className="space-y-3">
-              <Button
-                onClick={() => {}}
-                variant="primary"
-                className="w-full"
-              >
-                Send
-              </Button>
-              <Button
-                onClick={() => setSelectedProduct(null)}
-                variant="secondary"
-                className="w-full"
-              >
+              <Transaction price={price} product={productLabel} storeId={storeId} />
+              <Button onClick={() => setSelectedProduct(null)} variant="secondary" className="w-full">
                 {storeType === 'gas' ? 'Change Gas Type' : 'Change Product'}
               </Button>
             </div>

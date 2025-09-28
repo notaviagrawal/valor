@@ -5,8 +5,17 @@ import { Button, LiveFeedback } from '@worldcoin/mini-apps-ui-kit-react';
 import { MiniKit } from '@worldcoin/minikit-js';
 import { useWaitForTransactionReceipt } from '@worldcoin/minikit-react';
 import { useEffect, useState } from 'react';
-import { createPublicClient, http } from 'viem';
+import { createPublicClient, http, keccak256, toHex } from 'viem';
 import { worldchain } from 'viem/chains';
+
+interface TransactionProps {
+  price?: string;
+  product?: string;
+  storeId: string;
+  onStakeValidated?: (stakeId: `0x${string}`) => void;
+  onStakeReset?: () => void;
+  className?: string;
+}
 
 /**
  * This component is used to get a token from a contract
@@ -17,15 +26,23 @@ import { worldchain } from 'viem/chains';
  * 2. Update the transaction_id from the response to poll completion
  * 3. Wait in a useEffect for the transaction to complete
  */
-export const Transaction = () => {
+export const Transaction = ({ price, product, storeId, onStakeValidated, onStakeReset, className }: TransactionProps) => {
   // See the code for this contract here: https://worldscan.org/address/0xF0882554ee924278806d708396F1a7975b732522#code
   const myContractToken = '0xF0882554ee924278806d708396F1a7975b732522';
+  const distributorAddress = process.env.NEXT_PUBLIC_DISTRIBUTOR_ADDRESS as `0x${string}` | undefined; // Faucet distributor for 5 VAL
+  const refundDistributorAddress = process.env.NEXT_PUBLIC_REFUND_DISTRIBUTOR_ADDRESS as `0x${string}` | undefined; // Faucet distributor for 1 VAL refund
+  const valTokenAddress = process.env.NEXT_PUBLIC_VAL_TOKEN_ADDRESS as `0x${string}` | undefined; // VAL token (18 decimals)
+  const escrowAddress = process.env.NEXT_PUBLIC_ESCROW_ADDRESS as `0x${string}` | undefined; // Data stake escrow (Permit2)
+
   const [buttonState, setButtonState] = useState<
     'pending' | 'success' | 'failed' | undefined
   >(undefined);
-  const [whichButton, setWhichButton] = useState<'getToken' | 'usePermit2'>(
-    'getToken',
-  );
+  const [whichButton, setWhichButton] = useState<'stake'>('stake');
+  const [stakePrice, setStakePrice] = useState<string>(price ?? '');
+  const [lastStakeId, setLastStakeId] = useState<`0x${string}` | ''>('');
+  const [isStakeValidated, setIsStakeValidated] = useState<boolean | null>(null);
+  const [isFaucetPriceValid, setIsFaucetPriceValid] = useState<boolean>(false);
+  const [hasStaked, setHasStaked] = useState<boolean>(false);
 
   // This triggers the useWaitForTransactionReceipt hook when updated
   const [transactionId, setTransactionId] = useState<string>('');
@@ -33,7 +50,7 @@ export const Transaction = () => {
   // Feel free to use your own RPC provider for better performance
   const client = createPublicClient({
     chain: worldchain,
-    transport: http('https://worldchain-mainnet.g.alchemy.com/public'),
+    transport: http(process.env.WORLDCHAIN_RPC_URL || 'https://worldchain-mainnet.g.alchemy.com/public'),
   });
 
   const {
@@ -44,7 +61,7 @@ export const Transaction = () => {
   } = useWaitForTransactionReceipt({
     client: client,
     appConfig: {
-      app_id: process.env.WLD_CLIENT_ID as `app_${string}`,
+      app_id: process.env.NEXT_PUBLIC_APP_ID as `app_${string}`,
     },
     transactionId: transactionId,
   });
@@ -59,6 +76,8 @@ export const Transaction = () => {
         }, 3000);
       } else if (isError) {
         console.error('Transaction failed:', error);
+        console.error('Transaction ID:', transactionId);
+        console.error('Error details:', error);
         setButtonState('failed');
         setTimeout(() => {
           setButtonState(undefined);
@@ -67,155 +86,177 @@ export const Transaction = () => {
     }
   }, [isConfirmed, isConfirming, isError, error, transactionId]);
 
-  // This is a basic transaction call to mint a token
-  const onClickGetToken = async () => {
-    setTransactionId('');
-    setWhichButton('getToken');
-    setButtonState('pending');
-
-    try {
-      const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
-        transaction: [
-          {
-            address: myContractToken,
-            abi: TestContractABI,
-            functionName: 'mintToken',
-            args: [],
-          },
-        ],
-      });
-
-      if (finalPayload.status === 'success') {
-        console.log(
-          'Transaction submitted, waiting for confirmation:',
-          finalPayload.transaction_id,
-        );
-        setTransactionId(finalPayload.transaction_id);
-      } else {
-        console.error('Transaction submission failed:', finalPayload);
-        setButtonState('failed');
-        setTimeout(() => {
-          setButtonState(undefined);
-        }, 3000);
-      }
-    } catch (err) {
-      console.error('Error sending transaction:', err);
-      setButtonState('failed');
-      setTimeout(() => {
-        setButtonState(undefined);
-      }, 3000);
+  // Update stake price when prop changes
+  useEffect(() => {
+    if (price !== undefined) {
+      setStakePrice(price);
     }
-  };
+  }, [price]);
 
-  // This is a basic transaction call to use Permit2 to spend the token you minted
-  // Make sure to call Mint Token first
-  const onClickUsePermit2 = async () => {
+
+  // ----- Stake 1 VAL with Permit2 (escrow) -----
+  // Escrow ABI (only the functions we call)
+  const EscrowABI = [
+    {
+      inputs: [
+        {
+          components: [
+            { components: [{ internalType: 'address', name: 'token', type: 'address' }, { internalType: 'uint256', name: 'amount', type: 'uint256' }], internalType: 'struct ISignatureTransfer.TokenPermissions', name: 'permitted', type: 'tuple' },
+            { internalType: 'uint256', name: 'nonce', type: 'uint256' },
+            { internalType: 'uint256', name: 'deadline', type: 'uint256' },
+          ],
+          internalType: 'struct ISignatureTransfer.PermitTransferFrom',
+          name: 'permitData',
+          type: 'tuple',
+        },
+        {
+          components: [
+            { internalType: 'address', name: 'to', type: 'address' },
+            { internalType: 'uint256', name: 'requestedAmount', type: 'uint256' },
+          ],
+          internalType: 'struct ISignatureTransfer.SignatureTransferDetails',
+          name: 'details',
+          type: 'tuple',
+        },
+        { internalType: 'bytes', name: 'signature', type: 'bytes' },
+        { internalType: 'bytes32', name: 'stakeId', type: 'bytes32' },
+      ],
+      name: 'stakeWithPermit2',
+      outputs: [],
+      stateMutability: 'nonpayable',
+      type: 'function',
+    },
+  ] as const;
+
+  const onClickStake1WLD = async () => {
+    if (!escrowAddress) {
+      console.error('Missing NEXT_PUBLIC_ESCROW_ADDRESS');
+      return;
+    }
+    // Use VAL token (confirmed in your Portal Permit2 Tokens)
+    const wldAddress = '0xe9D770d3C03D3289EdA927Ed9d0A2a7c84186b6D' as const;
+
     setTransactionId('');
-    setWhichButton('usePermit2');
+    setWhichButton('stake');
     setButtonState('pending');
-    const address = (await MiniKit.getUserByUsername('alex')).walletAddress;
-
-    // Permit2 is valid for max 1 hour
-    const permitTransfer = {
-      permitted: {
-        token: myContractToken,
-        amount: (0.5 * 10 ** 18).toString(),
-      },
-      nonce: Date.now().toString(),
-      deadline: Math.floor((Date.now() + 30 * 60 * 1000) / 1000).toString(),
-    };
-
-    const transferDetails = {
-      to: address,
-      requestedAmount: (0.5 * 10 ** 18).toString(),
-    };
 
     try {
+      // Build a unique stakeId from user + price + timestamp
+      const userAddress = (MiniKit.user?.walletAddress || '').toLowerCase();
+      const raw = `${userAddress}|${stakePrice}|${Date.now()}`;
+      const stakeId = keccak256(toHex(raw));
+
+      // Permit2 placeholders
+      const amount = '1000000000000000000'; // 1 VAL (18 decimals)
+      const nonce = Math.floor(Date.now() / 1000).toString();
+      const deadline = Math.floor(Date.now() / 1000) + 5 * 60; // 5 minutes
+
       const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
         transaction: [
           {
-            address: myContractToken,
-            abi: TestContractABI,
-            functionName: 'signatureTransfer',
+            address: escrowAddress,
+            abi: EscrowABI,
+            functionName: 'stakeWithPermit2',
             args: [
-              [
-                [
-                  permitTransfer.permitted.token,
-                  permitTransfer.permitted.amount,
-                ],
-                permitTransfer.nonce,
-                permitTransfer.deadline,
-              ],
-              [transferDetails.to, transferDetails.requestedAmount],
+              { permitted: { token: wldAddress, amount }, nonce, deadline },
+              { to: escrowAddress, requestedAmount: amount },
               'PERMIT2_SIGNATURE_PLACEHOLDER_0',
+              stakeId,
             ],
           },
         ],
         permit2: [
           {
-            ...permitTransfer,
-            spender: myContractToken,
+            permitted: { token: wldAddress, amount },
+            nonce,
+            deadline: deadline.toString(),
+            spender: escrowAddress,
           },
         ],
       });
 
       if (finalPayload.status === 'success') {
-        console.log(
-          'Transaction submitted, waiting for confirmation:',
-          finalPayload.transaction_id,
-        );
+        console.log('Stake transaction submitted successfully:', finalPayload.transaction_id);
+        setLastStakeId(stakeId as `0x${string}`);
         setTransactionId(finalPayload.transaction_id);
+        setHasStaked(true);
+        // Hidden server-side validation
+        try {
+          const res = await fetch('/api/stakes/validate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ stakeId, price: stakePrice }),
+          });
+          const json = await res.json();
+          const isValidated = json.ok ? !!json.success : false;
+          setIsStakeValidated(isValidated);
+          if (isValidated) {
+            onStakeValidated?.(stakeId as `0x${string}`);
+          } else {
+            onStakeReset?.();
+          }
+        } catch (_) {
+          setIsStakeValidated(false);
+          onStakeReset?.();
+        }
       } else {
-        console.error('Transaction submission failed:', finalPayload);
+        console.error('Stake submission failed:', finalPayload);
         setButtonState('failed');
+        setTimeout(() => setButtonState(undefined), 3000);
       }
     } catch (err) {
-      console.error('Error sending transaction:', err);
+      console.error('Error sending stake transaction:', err);
       setButtonState('failed');
+      setTimeout(() => setButtonState(undefined), 3000);
     }
   };
 
+
   return (
-    <div className="grid w-full gap-4">
-      <p className="text-lg font-semibold">Transaction</p>
-      <LiveFeedback
-        label={{
-          failed: 'Transaction failed',
-          pending: 'Transaction pending',
-          success: 'Transaction successful',
-        }}
-        state={whichButton === 'getToken' ? buttonState : undefined}
-        className="w-full"
-      >
-        <Button
-          onClick={onClickGetToken}
-          disabled={buttonState === 'pending'}
-          size="lg"
-          variant="primary"
+    <div className={className}>
+      <div className="grid w-full gap-4">
+        <p className="text-lg font-semibold">Transaction</p>
+        {product && <p className="text-sm text-gray-600">Product: {product}</p>}
+
+        {/* Price input */}
+        <div className="grid gap-2">
+          <label className="text-sm">Price</label>
+          <input
+            value={stakePrice}
+            onChange={(e) => {
+              const v = e.target.value;
+              setStakePrice(v);
+              const num = Number(v);
+              if (Number.isFinite(num)) {
+                const bananaPrices = [0.57, 0.59, 0.61, 0.62, 0.63];
+                const min = Math.min(...bananaPrices);
+                const max = Math.max(...bananaPrices);
+                setIsFaucetPriceValid(num >= min - 0.1 && num <= max + 0.1);
+              } else {
+                setIsFaucetPriceValid(false);
+              }
+            }}
+            className="rounded border px-3 py-2"
+            placeholder="Enter price"
+          />
+        </div>
+        {/* No live banner; validation happens after stake */}
+        <LiveFeedback
+          label={{ failed: 'Stake failed', pending: 'Staking…', success: 'Stake submitted' }}
+          state={whichButton === 'stake' ? buttonState : undefined}
           className="w-full"
         >
-          Get Token
-        </Button>
-      </LiveFeedback>
-      <LiveFeedback
-        label={{
-          failed: 'Transaction failed',
-          pending: 'Transaction pending',
-          success: 'Transaction successful',
-        }}
-        state={whichButton === 'usePermit2' ? buttonState : undefined}
-        className="w-full"
-      >
-        <Button
-          onClick={onClickUsePermit2}
-          disabled={buttonState === 'pending'}
-          size="lg"
-          variant="tertiary"
-          className="w-full"
-        >
-          Use Permit2
-        </Button>
-      </LiveFeedback>
+          <Button
+            onClick={onClickStake1WLD}
+            disabled={buttonState === 'pending'}
+            size="lg"
+            variant="primary"
+            className="w-full"
+          >
+            Stake 1 VAL
+          </Button>
+        </LiveFeedback>
+      </div>
     </div>
   );
 };

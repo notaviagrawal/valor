@@ -2,11 +2,11 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useSession, signOut } from 'next-auth/react';
-import { Button } from '@worldcoin/mini-apps-ui-kit-react';
 import Script from 'next/script';
 import GoogleMapComponent from '../GoogleMap';
 import StorePage from '../StorePage';
 import { getCountryFromLocation } from '../../lib/country-utils';
+import { useClaimActions } from '../../hooks/useClaimActions';
 
 // Google Maps API types
 declare global {
@@ -23,10 +23,13 @@ export default function NewUI() {
     const [showProfile, setShowProfile] = useState(false);
     const searchInputRef = useRef<HTMLInputElement>(null);
     const [searchValue, setSearchValue] = useState('');
-    
+
+    // Claim actions hook
+    const { claimReward, claimRefund, buttonState, whichButton, isConfirming } = useClaimActions();
+
     // Store page state
     const [showStorePage, setShowStorePage] = useState(false);
-    const [selectedStore, setSelectedStore] = useState<{name: string, id: string, country: string, type?: 'grocery' | 'gas'} | null>(null);
+    const [selectedStore, setSelectedStore] = useState<{ name: string, id: string, country: string, type?: 'grocery' | 'gas' } | null>(null);
 
     // Location and places state
     const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -332,7 +335,7 @@ export default function NewUI() {
         const THREE = (window as any).THREE;
         const container = document.getElementById('wallet-logo-container');
         const loadingElement = document.getElementById('wallet-loading');
-        
+
         if (!container) {
             console.error('Logo container not found');
             return;
@@ -389,7 +392,7 @@ export default function NewUI() {
         renderer.outputEncoding = THREE.sRGBEncoding;
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
         renderer.toneMappingExposure = 1.2;
-        
+
         container.appendChild(renderer.domElement);
 
         // Add orbit controls
@@ -445,125 +448,125 @@ export default function NewUI() {
         // Try to load the GLTF file with additional error handling
         try {
             console.log('Starting GLTF load...');
-        loader.load(
-            '/valerlogo.gltf',
-            function(gltf: any) {
+            loader.load(
+                '/valerlogo.gltf',
+                function (gltf: any) {
                     clearTimeout(loadingTimeout);
                     console.log('GLTF loaded successfully:', gltf);
-                    
-                const logo = gltf.scene;
-                
-                // Scale the logo
-                const box = new THREE.Box3().setFromObject(logo);
-                const size = box.getSize(new THREE.Vector3());
-                const maxDim = Math.max(size.x, size.y, size.z);
-                const scale = 0.1 / maxDim;
-                logo.scale.setScalar(scale);
-                
-                // Center the logo
-                const scaledBox = new THREE.Box3().setFromObject(logo);
-                const center = new THREE.Vector3();
-                scaledBox.getCenter(center);
-                logo.position.sub(center);
-                
-                // Create pivot group
-                logoPivot = new THREE.Group();
-                logoPivot.add(logo);
-                scene.add(logoPivot);
-                
-                // Apply rotation
-                logoPivot.rotation.x = -Math.PI / 2;
-                
-                // Set initial opacity for fade-in animation
-                logoPivot.traverse(function(child: any) {
-                    if (child.isMesh && child.material) {
-                        if (Array.isArray(child.material)) {
-                            child.material.forEach((mat: any) => {
-                                mat.transparent = true;
-                                mat.opacity = 0;
-                            });
-                        } else {
-                            child.material.transparent = true;
-                            child.material.opacity = 0;
-                        }
-                    }
-                });
-                
-                // Apply material
-                logo.traverse(function(child: any) {
-                    if (child.isMesh) {
-                        child.castShadow = true;
-                        child.receiveShadow = true;
-                        
-                        if (child.material) {
+
+                    const logo = gltf.scene;
+
+                    // Scale the logo
+                    const box = new THREE.Box3().setFromObject(logo);
+                    const size = box.getSize(new THREE.Vector3());
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    const scale = 0.1 / maxDim;
+                    logo.scale.setScalar(scale);
+
+                    // Center the logo
+                    const scaledBox = new THREE.Box3().setFromObject(logo);
+                    const center = new THREE.Vector3();
+                    scaledBox.getCenter(center);
+                    logo.position.sub(center);
+
+                    // Create pivot group
+                    logoPivot = new THREE.Group();
+                    logoPivot.add(logo);
+                    scene.add(logoPivot);
+
+                    // Apply rotation
+                    logoPivot.rotation.x = -Math.PI / 2;
+
+                    // Set initial opacity for fade-in animation
+                    logoPivot.traverse(function (child: any) {
+                        if (child.isMesh && child.material) {
                             if (Array.isArray(child.material)) {
                                 child.material.forEach((mat: any) => {
-                                    mat.color.setHex(0xe51515);
-                                    mat.metalness = 0.0;
-                                    mat.roughness = 0.3;
                                     mat.transparent = true;
-                                    mat.opacity = 0; // Start with opacity 0 for fade-in
+                                    mat.opacity = 0;
                                 });
                             } else {
-                                child.material.color.setHex(0xe51515);
-                                child.material.metalness = 0.0;
-                                child.material.roughness = 0.3;
                                 child.material.transparent = true;
-                                child.material.opacity = 0; // Start with opacity 0 for fade-in
+                                child.material.opacity = 0;
                             }
                         }
-                    }
-                });
-                
-                // Hide loading indicator
-                if (loadingElement) {
-                    loadingElement.style.display = 'none';
-                }
-                
-                console.log('Logo loaded successfully');
-            },
-            function(progress: any) {
-                console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
-            },
-            function(error: any) {
-                clearTimeout(loadingTimeout);
-                console.error('Error loading logo:', error);
-                console.error('Error details:', {
-                    message: error?.message || 'Unknown error',
-                    type: error?.type || 'Unknown type',
-                    url: error?.url || '/valerlogo.gltf',
-                    status: error?.status || 'Unknown status'
-                });
-                
-                // Create a fallback 3D object if loading fails
-                try {
-                    console.log('Creating fallback cube...');
-                    const fallbackGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
-                    const fallbackMaterial = new THREE.MeshLambertMaterial({ 
-                        color: 0xe51515,
-                        transparent: true,
-                        opacity: 0 // Start with opacity 0 for fade-in
                     });
-                    const fallbackCube = new THREE.Mesh(fallbackGeometry, fallbackMaterial);
-                    
-                    logoPivot = new THREE.Group();
-                    logoPivot.add(fallbackCube);
-                    scene.add(logoPivot);
-                    
+
+                    // Apply material
+                    logo.traverse(function (child: any) {
+                        if (child.isMesh) {
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+
+                            if (child.material) {
+                                if (Array.isArray(child.material)) {
+                                    child.material.forEach((mat: any) => {
+                                        mat.color.setHex(0xe51515);
+                                        mat.metalness = 0.0;
+                                        mat.roughness = 0.3;
+                                        mat.transparent = true;
+                                        mat.opacity = 0; // Start with opacity 0 for fade-in
+                                    });
+                                } else {
+                                    child.material.color.setHex(0xe51515);
+                                    child.material.metalness = 0.0;
+                                    child.material.roughness = 0.3;
+                                    child.material.transparent = true;
+                                    child.material.opacity = 0; // Start with opacity 0 for fade-in
+                                }
+                            }
+                        }
+                    });
+
                     // Hide loading indicator
-                if (loadingElement) {
+                    if (loadingElement) {
                         loadingElement.style.display = 'none';
                     }
-                    
-                    console.log('Fallback cube created successfully');
-                } catch (fallbackError) {
-                    console.error('Failed to create fallback:', fallbackError);
-                    if (loadingElement) {
-                        loadingElement.innerHTML = `Error loading logo: ${error?.message || 'Failed to load'}`;
+
+                    console.log('Logo loaded successfully');
+                },
+                function (progress: any) {
+                    console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
+                },
+                function (error: any) {
+                    clearTimeout(loadingTimeout);
+                    console.error('Error loading logo:', error);
+                    console.error('Error details:', {
+                        message: error?.message || 'Unknown error',
+                        type: error?.type || 'Unknown type',
+                        url: error?.url || '/valerlogo.gltf',
+                        status: error?.status || 'Unknown status'
+                    });
+
+                    // Create a fallback 3D object if loading fails
+                    try {
+                        console.log('Creating fallback cube...');
+                        const fallbackGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+                        const fallbackMaterial = new THREE.MeshLambertMaterial({
+                            color: 0xe51515,
+                            transparent: true,
+                            opacity: 0 // Start with opacity 0 for fade-in
+                        });
+                        const fallbackCube = new THREE.Mesh(fallbackGeometry, fallbackMaterial);
+
+                        logoPivot = new THREE.Group();
+                        logoPivot.add(fallbackCube);
+                        scene.add(logoPivot);
+
+                        // Hide loading indicator
+                        if (loadingElement) {
+                            loadingElement.style.display = 'none';
+                        }
+
+                        console.log('Fallback cube created successfully');
+                    } catch (fallbackError) {
+                        console.error('Failed to create fallback:', fallbackError);
+                        if (loadingElement) {
+                            loadingElement.innerHTML = `Error loading logo: ${error?.message || 'Failed to load'}`;
+                        }
                     }
                 }
-            }
-        );
+            );
         } catch (loadError) {
             clearTimeout(loadingTimeout);
             console.error('Failed to start GLTF loading:', loadError);
@@ -576,24 +579,24 @@ export default function NewUI() {
         let animationId: number;
         let fadeInStartTime: number | null = null;
         const fadeInDuration = 500; // 0.5 second fade-in
-        
+
         function animate() {
             animationId = requestAnimationFrame(animate);
 
             if (logoPivot) {
                 logoPivot.rotation.z += 0.01;
-                
+
                 // Handle fade-in animation
                 if (fadeInStartTime === null) {
                     fadeInStartTime = Date.now();
                 }
-                
+
                 const elapsed = Date.now() - fadeInStartTime;
                 const progress = Math.min(elapsed / fadeInDuration, 1);
                 const opacity = progress; // Linear fade-in
-                
+
                 // Apply opacity to all materials
-                logoPivot.traverse(function(child: any) {
+                logoPivot.traverse(function (child: any) {
                     if (child.isMesh && child.material) {
                         if (Array.isArray(child.material)) {
                             child.material.forEach((mat: any) => {
@@ -629,7 +632,7 @@ export default function NewUI() {
                 cancelAnimationFrame(animationId);
             }
             window.removeEventListener('resize', onWindowResize);
-            
+
             // Dispose of Three.js resources
             if (renderer) {
                 renderer.dispose();
@@ -651,10 +654,10 @@ export default function NewUI() {
         if (activeTab === 'wallet' && !showNotifications && !showProfile) {
             // Only initialize when wallet tab is active and no overlays are showing
             const container = document.getElementById('wallet-logo-container');
-            
+
             if (container) {
                 const hasCanvas = container.querySelector('canvas');
-                
+
                 if (!hasCanvas) {
                     // Wait for Three.js to load
                     const checkThreeJS = () => {
@@ -778,7 +781,7 @@ export default function NewUI() {
     const handleStoreSelection = async (store: any) => {
         try {
             let country = 'United States'; // Default fallback
-            
+
             // Try to get country from store location if available
             if (store.geometry?.location) {
                 const lat = store.geometry.location.lat();
@@ -803,7 +806,7 @@ export default function NewUI() {
             console.error('Error getting country:', error);
             // Fallback with default country
             const storeType = store.types?.includes('gas_station') ? 'gas' : 'grocery';
-            
+
             setSelectedStore({
                 name: store.name || store.structured_formatting?.main_text || 'Unknown Store',
                 id: store.place_id || store.name || 'unknown',
@@ -921,9 +924,9 @@ export default function NewUI() {
                                         </svg>
                                     </div>
                                 ))}
-                                
+
                                 {/* Logout Button */}
-                                <div 
+                                <div
                                     className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl cursor-pointer hover:bg-gray-100 transition-colors"
                                     onClick={() => signOut({ redirect: false })}
                                 >
@@ -1037,11 +1040,11 @@ export default function NewUI() {
                     <div className="h-screen w-full relative overflow-hidden">
                         {/* Google Maps - Full screen background */}
                         <div className="absolute inset-0">
-                        <GoogleMapComponent 
-                            apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'your_api_key_here'} 
-                            onStoreSelection={handleStoreSelection}
-                            initialCenter={userLocation}
-                        />
+                            <GoogleMapComponent
+                                apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'your_api_key_here'}
+                                onStoreSelection={handleStoreSelection}
+                                initialCenter={userLocation}
+                            />
                         </div>
 
                         {/* Blur overlay when search is expanded */}
@@ -1231,6 +1234,31 @@ export default function NewUI() {
                             <div className="text-center">
                                 <div className="text-[4rem] sm:text-[6rem] md:text-[8rem] lg:text-[12rem] xl:text-[16rem] font-bold text-[#1C1C1E] tracking-tight leading-none whitespace-nowrap overflow-hidden" style={{ fontFamily: 'Garet Book' }}>
                                     165 val
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Claim Actions */}
+                        <div className="px-4 py-4">
+                            <div className="space-y-4">
+                                <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-2xl p-4">
+                                    <h3 className="text-lg font-semibold text-[#1C1C1E] mb-4 font-inter">Actions</h3>
+                                    <div className="space-y-3">
+                                        <button
+                                            onClick={claimReward}
+                                            disabled={buttonState === 'pending' || isConfirming}
+                                            className="w-full bg-[#1C1C1E] text-white py-3 px-4 rounded-xl font-medium font-inter hover:bg-[#333] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {whichButton === 'claimVal' && buttonState === 'pending' ? 'Claiming reward...' : 'Claim Reward (5 VAL)'}
+                                        </button>
+                                        <button
+                                            onClick={claimRefund}
+                                            disabled={buttonState === 'pending' || isConfirming}
+                                            className="w-full bg-white/20 backdrop-blur-md border border-white/30 text-[#1C1C1E] py-3 px-4 rounded-xl font-medium font-inter hover:bg-white/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {whichButton === 'claimStake' && buttonState === 'pending' ? 'Processing refund...' : 'Refund (1 VAL)'}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1452,8 +1480,8 @@ export default function NewUI() {
                             ) : (
                                 <div className="flex gap-4 overflow-x-auto overflow-y-hidden" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                                     {groceryStores.map((store, index) => (
-                                        <div 
-                                            key={index} 
+                                        <div
+                                            key={index}
                                             className="relative group cursor-pointer flex-shrink-0"
                                             onClick={() => handleStoreSelection(store)}
                                         >
@@ -1494,8 +1522,8 @@ export default function NewUI() {
                             ) : (
                                 <div className="flex gap-4 overflow-x-auto overflow-y-hidden" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                                     {gasStations.map((station, index) => (
-                                        <div 
-                                            key={index} 
+                                        <div
+                                            key={index}
                                             className="relative group cursor-pointer flex-shrink-0"
                                             onClick={() => handleStoreSelection(station)}
                                         >
@@ -1528,12 +1556,12 @@ export default function NewUI() {
     return (
         <>
             {/* Three.js Scripts */}
-            <Script 
-                src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" 
+            <Script
+                src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"
                 strategy="afterInteractive"
                 onLoad={() => {
                     console.log('Three.js loaded');
-                    
+
                     // Wait a bit for Three.js to fully initialize
                     setTimeout(() => {
                         // Load GLTFLoader after THREE.js is loaded
@@ -1561,7 +1589,7 @@ export default function NewUI() {
                 }}
             />
 
-            
+
             <style jsx>{`
                 /* Hide all scrollbars completely */
                 * {
