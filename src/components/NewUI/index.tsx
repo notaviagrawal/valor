@@ -888,7 +888,6 @@ export default function NewUI() {
                             <div className="space-y-4">
                                 {[
                                     { title: 'Personal Information', key: 'user' },
-                                    { title: 'Payment Methods', key: 'card' },
                                     { title: 'Order History', key: 'history' },
                                     { title: 'Settings', key: 'settings' },
                                 ].map((item, index) => (
@@ -899,12 +898,6 @@ export default function NewUI() {
                                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-[#1C1C1E]">
                                                         <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.939 15 5.922 15.421 5.172 16.172C4.421 16.922 4 17.939 4 19V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                                         <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                                    </svg>
-                                                )}
-                                                {item.key === 'card' && (
-                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-[#1C1C1E]">
-                                                        <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="2" />
-                                                        <path d="M3 10H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                                                     </svg>
                                                 )}
                                                 {item.key === 'history' && (
@@ -983,18 +976,50 @@ export default function NewUI() {
                     <div className="flex-1 bg-white rounded-t-3xl">
                         <div className="px-6 pt-6">
                             <div className="space-y-4">
-                                {[1, 2, 3, 4, 5].map((item) => (
-                                    <div key={item} className="bg-gray-50 rounded-2xl p-4 cursor-pointer hover:bg-gray-100 transition-colors">
+                                {[
+                                    {
+                                        title: "You've staked 50 WORLD",
+                                        message: "Your stake is earning rewards",
+                                        time: "2 hours ago",
+                                        type: "stake"
+                                    },
+                                    {
+                                        title: "You've received 10 VAL",
+                                        message: "Reward for completing daily tasks",
+                                        time: "5 hours ago",
+                                        type: "reward"
+                                    },
+                                    {
+                                        title: "Don't lose your streak!",
+                                        message: "You're on a 7-day streak",
+                                        time: "1 day ago",
+                                        type: "streak"
+                                    },
+                                    {
+                                        title: "You've staked 25 WORLD",
+                                        message: "Added to your existing stake",
+                                        time: "2 days ago",
+                                        type: "stake"
+                                    },
+                                    {
+                                        title: "You've received 5 VAL",
+                                        message: "Welcome bonus activated",
+                                        time: "3 days ago",
+                                        type: "reward"
+                                    }
+                                ].map((notification, index) => (
+                                    <div key={index} className="bg-gray-50 rounded-2xl p-4 cursor-pointer hover:bg-gray-100 transition-colors">
                                         <div className="flex items-start space-x-3">
-                                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-blue-600">
+                                            <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-[#1C1C1E]">
                                                     <path d="M18 8C18 6.4087 17.3679 4.88258 16.2426 3.75736C15.1174 2.63214 13.5913 2 12 2C10.4087 2 8.88258 2.63214 7.75736 3.75736C6.63214 4.88258 6 6.4087 6 8C6 15 3 17 3 17H21C21 17 18 15 18 8Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                    <path d="M13.73 21C13.5542 21.3031 13.3019 21.5547 12.9982 21.7295C12.6946 21.9044 12.3504 21.9965 12 21.9965C11.6496 21.9965 11.3054 21.9044 11.0018 21.7295C10.6982 21.5547 10.4458 21.3031 10.27 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                                 </svg>
                                             </div>
                                             <div className="flex-1">
-                                                <h3 className="font-medium text-[#1C1C1E] text-sm font-inter">New notification {item}</h3>
-                                                <p className="text-gray-600 text-xs font-inter mt-1">You have a new message from the system</p>
-                                                <p className="text-gray-400 text-xs font-inter mt-1">{item} hours ago</p>
+                                                <h3 className="font-medium text-[#1C1C1E] text-sm font-inter">{notification.title}</h3>
+                                                <p className="text-gray-600 text-xs font-inter mt-1">{notification.message}</p>
+                                                <p className="text-gray-400 text-xs font-inter mt-1">{notification.time}</p>
                                             </div>
                                         </div>
                                     </div>
@@ -1206,6 +1231,23 @@ export default function NewUI() {
                             <div className="text-center">
                                 <div className="text-[4rem] sm:text-[6rem] md:text-[8rem] lg:text-[12rem] xl:text-[16rem] font-bold text-[#1C1C1E] tracking-tight leading-none whitespace-nowrap overflow-hidden" style={{ fontFamily: 'Garet Book' }}>
                                     165 val
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Streak Counter */}
+                        <div className="px-6 py-4">
+                            <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-2xl p-4">
+                                <div className="flex items-center justify-center space-x-3">
+                                    <div className="w-10 h-10 bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-[#1C1C1E]">
+                                            <path d="M12 2L15.09 8.26L22 9L17 14L18.18 21L12 17.77L5.82 21L7 14L2 9L8.91 8.26L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                        </svg>
+                                    </div>
+                                    <div className="text-center">
+                                        <div className="text-2xl font-bold text-[#1C1C1E] font-inter">7</div>
+                                        <div className="text-sm text-gray-600 font-inter">Day Streak</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
