@@ -8,13 +8,17 @@ interface StorePageProps {
   storeName: string;
   storeId: string;
   country: string;
+  storeType?: 'grocery' | 'gas';
   onBack: () => void;
 }
 
-export default function StorePage({ storeName, storeId, country, onBack }: StorePageProps) {
-  const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
+export default function StorePage({ storeName, storeId, country, storeType = 'grocery', onBack }: StorePageProps) {
+  const [selectedProduct, setSelectedProduct] = useState<string | null>(storeType === 'gas' ? 'regular' : null);
+  const [price, setPrice] = useState<string>('');
 
-  const availableProducts = getProductsForCountry(country);
+  const availableProducts = storeType === 'gas' 
+    ? ['regular', 'premium', 'diesel']
+    : getProductsForCountry(country);
 
   return (
     <div className="min-h-screen bg-[#F4F4F8] font-inter flex flex-col">
@@ -52,7 +56,9 @@ export default function StorePage({ storeName, storeId, country, onBack }: Store
 
       {/* Product Selection */}
       <div className="px-6 pb-6">
-        <h2 className="text-xl font-bold text-[#1C1C1E] mb-4 font-inter">Select Product</h2>
+        <h2 className="text-xl font-bold text-[#1C1C1E] mb-4 font-inter">
+          {storeType === 'gas' ? 'Select Gas Type' : 'Select Product'}
+        </h2>
         <div className="flex gap-3 overflow-x-auto overflow-y-hidden" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
           {availableProducts.map((product, index) => (
             <div
@@ -65,11 +71,17 @@ export default function StorePage({ storeName, storeId, country, onBack }: Store
               onClick={() => setSelectedProduct(product)}
             >
               <span className="text-base">
-                {product === 'bananas' ? '🍌' : 
-                 product === 'beef' ? '🥩' : 
-                 product === 'pork' ? '🥓' : 
-                 product === 'apples' ? '🍎' : 
-                 product === 'pears' ? '🍐' : '📦'}
+                {storeType === 'gas' ? (
+                  product === 'regular' ? '⛽' :
+                  product === 'premium' ? '⛽' :
+                  product === 'diesel' ? '⛽' : '⛽'
+                ) : (
+                  product === 'bananas' ? '🍌' : 
+                  product === 'beef' ? '🥩' : 
+                  product === 'pork' ? '🥓' : 
+                  product === 'apples' ? '🍎' : 
+                  product === 'pears' ? '🍐' : '📦'
+                )}
               </span>
               {product.charAt(0).toUpperCase() + product.slice(1)}
             </div>
@@ -82,21 +94,56 @@ export default function StorePage({ storeName, storeId, country, onBack }: Store
         <div className="px-6 pb-6 flex-1">
           <div className="bg-white rounded-2xl p-6 text-center">
             <div className="w-32 h-32 bg-green-100 rounded-2xl mx-auto mb-4 flex items-center justify-center">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" className="text-green-600">
-                <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <span className="text-6xl">
+                {storeType === 'gas' ? '⛽' : (
+                  selectedProduct === 'bananas' ? '🍌' :
+                  selectedProduct === 'beef' ? '🥩' :
+                  selectedProduct === 'pork' ? '🥓' :
+                  selectedProduct === 'apples' ? '🍎' :
+                  selectedProduct === 'pears' ? '🍐' : '📦'
+                )}
+              </span>
             </div>
-            <h3 className="text-lg font-bold text-[#1C1C1E] mb-2 font-inter">Product Selected</h3>
+            <h3 className="text-lg font-bold text-[#1C1C1E] mb-2 font-inter">
+              {storeType === 'gas' ? 'Gas type selected, enter price' : 'Product selected, enter price'}
+            </h3>
             <p className="text-gray-600 font-inter mb-4">
-              You have selected: <span className="font-semibold text-[#1C1C1E]">{selectedProduct.charAt(0).toUpperCase() + selectedProduct.slice(1)}</span>
+              You selected <span className="font-semibold text-[#1C1C1E]">{selectedProduct.charAt(0).toUpperCase() + selectedProduct.slice(1)}</span>
             </p>
-            <Button
-              onClick={() => setSelectedProduct(null)}
-              variant="secondary"
-              className="w-full"
-            >
-              Change Product
-            </Button>
+
+            <div className="mb-4 text-left">
+              <label className="block text-sm font-medium text-gray-700 mb-1 font-inter">Price</label>
+              <div className="flex items-center border border-gray-200 rounded-2xl bg-gray-50 focus-within:ring-2 focus-within:ring-[#1C1C1E] focus-within:border-transparent">
+                <span className="pl-4 text-gray-500">$</span>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  className="flex-1 h-11 px-3 border-0 bg-transparent focus:outline-none text-[#1C1C1E] font-inter"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <Button
+                onClick={() => {}}
+                variant="primary"
+                className="w-full"
+              >
+                Send
+              </Button>
+              <Button
+                onClick={() => setSelectedProduct(null)}
+                variant="secondary"
+                className="w-full"
+              >
+                {storeType === 'gas' ? 'Change Gas Type' : 'Change Product'}
+              </Button>
+            </div>
           </div>
         </div>
       )}

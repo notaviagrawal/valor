@@ -26,7 +26,7 @@ export default function NewUI() {
     
     // Store page state
     const [showStorePage, setShowStorePage] = useState(false);
-    const [selectedStore, setSelectedStore] = useState<{name: string, id: string, country: string} | null>(null);
+    const [selectedStore, setSelectedStore] = useState<{name: string, id: string, country: string, type?: 'grocery' | 'gas'} | null>(null);
 
     // Location and places state
     const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -789,19 +789,26 @@ export default function NewUI() {
                 country = await getCountryFromLocation(userLocation.lat, userLocation.lng);
             }
 
+            // Determine store type based on store types
+            const storeType = store.types?.includes('gas_station') ? 'gas' : 'grocery';
+
             setSelectedStore({
                 name: store.name || store.structured_formatting?.main_text || 'Unknown Store',
                 id: store.place_id || store.name || 'unknown',
-                country: country
+                country: country,
+                type: storeType
             });
             setShowStorePage(true);
         } catch (error) {
             console.error('Error getting country:', error);
             // Fallback with default country
+            const storeType = store.types?.includes('gas_station') ? 'gas' : 'grocery';
+            
             setSelectedStore({
                 name: store.name || store.structured_formatting?.main_text || 'Unknown Store',
                 id: store.place_id || store.name || 'unknown',
-                country: 'United States'
+                country: 'United States',
+                type: storeType
             });
             setShowStorePage(true);
         }
@@ -837,6 +844,7 @@ export default function NewUI() {
                     storeName={selectedStore.name}
                     storeId={selectedStore.id}
                     country={selectedStore.country}
+                    storeType={selectedStore.type || 'grocery'}
                     onBack={handleBackFromStore}
                 />
             );
