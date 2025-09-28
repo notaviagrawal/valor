@@ -308,6 +308,29 @@ export default function NewUI() {
             return;
         }
 
+        // Check if GLTFLoader is available
+        if (!THREE.GLTFLoader) {
+            console.error('GLTFLoader not available');
+            if (loadingElement) {
+                loadingElement.innerHTML = '3D loader not available - please refresh the page';
+            }
+            return;
+        }
+
+        // Check if OrbitControls is available
+        if (!THREE.OrbitControls) {
+            console.error('OrbitControls not available');
+            if (loadingElement) {
+                loadingElement.innerHTML = '3D controls not available - please refresh the page';
+            }
+            return;
+        }
+
+        console.log('All Three.js components loaded successfully');
+        console.log('THREE object:', THREE);
+        console.log('GLTFLoader:', THREE.GLTFLoader);
+        console.log('OrbitControls:', THREE.OrbitControls);
+
         // Show loading indicator
         if (loadingElement) {
             loadingElement.style.display = 'block';
@@ -360,13 +383,38 @@ export default function NewUI() {
         scene.add(hemisphereLight);
 
         // Load the logo
-        const loader = new THREE.GLTFLoader();
+        let loader: any;
+        try {
+            console.log('Creating GLTFLoader...');
+            loader = new THREE.GLTFLoader();
+            console.log('GLTFLoader created successfully:', loader);
+        } catch (error) {
+            console.error('Failed to create GLTFLoader:', error);
+            if (loadingElement) {
+                loadingElement.innerHTML = 'Failed to initialize 3D loader';
+            }
+            return;
+        }
         let logoPivot: any = null;
 
-        loader.load(
-            '/valerlogo.gltf',
-            function(gltf: any) {
-                const logo = gltf.scene;
+        // Set a timeout for loading
+        const loadingTimeout = setTimeout(() => {
+            console.error('Logo loading timeout');
+            if (loadingElement) {
+                loadingElement.innerHTML = 'Loading timeout - please check your connection';
+            }
+        }, 10000); // 10 second timeout
+
+        // Try to load the GLTF file with additional error handling
+        try {
+            console.log('Starting GLTF load...');
+            loader.load(
+                '/valerlogo.gltf',
+                function(gltf: any) {
+                    clearTimeout(loadingTimeout);
+                    console.log('GLTF loaded successfully:', gltf);
+                    
+                    const logo = gltf.scene;
                 
                 // Scale the logo
                 const box = new THREE.Box3().setFromObject(logo);
@@ -389,6 +437,21 @@ export default function NewUI() {
                 // Apply rotation
                 logoPivot.rotation.x = -Math.PI / 2;
                 
+                // Set initial opacity for fade-in animation
+                logoPivot.traverse(function(child: any) {
+                    if (child.isMesh && child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach((mat: any) => {
+                                mat.transparent = true;
+                                mat.opacity = 0;
+                            });
+                        } else {
+                            child.material.transparent = true;
+                            child.material.opacity = 0;
+                        }
+                    }
+                });
+                
                 // Apply material
                 logo.traverse(function(child: any) {
                     if (child.isMesh) {
@@ -398,14 +461,18 @@ export default function NewUI() {
                         if (child.material) {
                             if (Array.isArray(child.material)) {
                                 child.material.forEach((mat: any) => {
-                                    mat.color.setHex(0x4A90E2);
+                                    mat.color.setHex(0xe51515);
                                     mat.metalness = 0.0;
                                     mat.roughness = 0.3;
+                                    mat.transparent = true;
+                                    mat.opacity = 0; // Start with opacity 0 for fade-in
                                 });
                             } else {
-                                child.material.color.setHex(0x4A90E2);
+                                child.material.color.setHex(0xe51515);
                                 child.material.metalness = 0.0;
                                 child.material.roughness = 0.3;
+                                child.material.transparent = true;
+                                child.material.opacity = 0; // Start with opacity 0 for fade-in
                             }
                         }
                     }
@@ -422,20 +489,84 @@ export default function NewUI() {
                 console.log('Loading progress:', (progress.loaded / progress.total * 100) + '%');
             },
             function(error: any) {
+                clearTimeout(loadingTimeout);
                 console.error('Error loading logo:', error);
-                if (loadingElement) {
-                    loadingElement.innerHTML = 'Error loading logo. Please check the console.';
+                console.error('Error details:', {
+                    message: error?.message || 'Unknown error',
+                    type: error?.type || 'Unknown type',
+                    url: error?.url || '/valerlogo.gltf',
+                    status: error?.status || 'Unknown status'
+                });
+                
+                // Create a fallback 3D object if loading fails
+                try {
+                    console.log('Creating fallback cube...');
+                    const fallbackGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+                    const fallbackMaterial = new THREE.MeshLambertMaterial({ 
+                        color: 0xe51515,
+                        transparent: true,
+                        opacity: 0 // Start with opacity 0 for fade-in
+                    });
+                    const fallbackCube = new THREE.Mesh(fallbackGeometry, fallbackMaterial);
+                    
+                    logoPivot = new THREE.Group();
+                    logoPivot.add(fallbackCube);
+                    scene.add(logoPivot);
+                    
+                    // Hide loading indicator
+                    if (loadingElement) {
+                        loadingElement.style.display = 'none';
+                    }
+                    
+                    console.log('Fallback cube created successfully');
+                } catch (fallbackError) {
+                    console.error('Failed to create fallback:', fallbackError);
+                    if (loadingElement) {
+                        loadingElement.innerHTML = `Error loading logo: ${error?.message || 'Failed to load'}`;
+                    }
                 }
             }
         );
+        } catch (loadError) {
+            clearTimeout(loadingTimeout);
+            console.error('Failed to start GLTF loading:', loadError);
+            if (loadingElement) {
+                loadingElement.innerHTML = 'Failed to start loading 3D model';
+            }
+        }
 
         // Animation loop
         let animationId: number;
+        let fadeInStartTime: number | null = null;
+        const fadeInDuration = 1000; // 1 second fade-in
+        
         function animate() {
             animationId = requestAnimationFrame(animate);
 
             if (logoPivot) {
                 logoPivot.rotation.z += 0.01;
+                
+                // Handle fade-in animation
+                if (fadeInStartTime === null) {
+                    fadeInStartTime = Date.now();
+                }
+                
+                const elapsed = Date.now() - fadeInStartTime;
+                const progress = Math.min(elapsed / fadeInDuration, 1);
+                const opacity = progress; // Linear fade-in
+                
+                // Apply opacity to all materials
+                logoPivot.traverse(function(child: any) {
+                    if (child.isMesh && child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach((mat: any) => {
+                                mat.opacity = opacity;
+                            });
+                        } else {
+                            child.material.opacity = opacity;
+                        }
+                    }
+                });
             }
 
             controls.update();
@@ -904,9 +1035,8 @@ export default function NewUI() {
                         {/* Logo Viewer - Fixed height, moved up */}
                         <div className="h-80 relative flex-shrink-0">
                             <div id="wallet-logo-container" className="w-full h-full" key={`wallet-logo-${activeTab}`}>
-                                <div id="wallet-loading" className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-[#333] text-lg z-1000">
-                                    <div className="border-3 border-solid border-gray-200 border-t-[#333] rounded-full w-8 h-8 animate-spin mx-auto mb-2"></div>
-                                    Loading Logo...
+                                <div id="wallet-loading" className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-[#333] text-xl z-1000 font-inter">
+                                    <div className="border-3 border-solid border-gray-200 border-t-[#333] rounded-full w-10 h-10 animate-spin mx-auto"></div>
                                 </div>
                             </div>
                         </div>
@@ -914,7 +1044,7 @@ export default function NewUI() {
                         {/* Token Balance - Now visible */}
                         <div className="px-4 py-6 flex-shrink-0 bg-white/10 backdrop-blur-sm">
                             <div className="text-center">
-                                <div className="text-3xl sm:text-4xl font-bold text-[#1C1C1E] tracking-tight leading-tight font-inter">
+                                <div className="text-5xl sm:text-6xl md:text-7xl font-bold text-[#1C1C1E] tracking-tight leading-tight font-inter">
                                     1238 VALER
                                 </div>
                             </div>
@@ -925,18 +1055,18 @@ export default function NewUI() {
                             <div className="space-y-4">
                                 {/* Recent Transactions */}
                                 <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
-                                    <h3 className="text-lg font-semibold text-[#1C1C1E] mb-2">Recent Transactions</h3>
-                                    <p className="text-gray-600 text-sm">No recent transactions</p>
+                                    <h3 className="text-xl font-semibold text-[#1C1C1E] mb-3 font-inter">Recent Transactions</h3>
+                                    <p className="text-gray-600 text-base font-inter">No recent transactions</p>
                                 </div>
                                 
                                 {/* Quick Actions */}
                                 <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
-                                    <h3 className="text-lg font-semibold text-[#1C1C1E] mb-2">Quick Actions</h3>
+                                    <h3 className="text-xl font-semibold text-[#1C1C1E] mb-3 font-inter">Quick Actions</h3>
                                     <div className="flex gap-3 mt-3">
-                                        <button className="flex-1 bg-blue-500 text-white py-2 px-4 rounded-xl text-sm font-medium">
+                                        <button className="flex-1 bg-blue-500 text-white py-3 px-4 rounded-xl text-base font-medium font-inter">
                                             Send
                                         </button>
-                                        <button className="flex-1 bg-green-500 text-white py-2 px-4 rounded-xl text-sm font-medium">
+                                        <button className="flex-1 bg-green-500 text-white py-3 px-4 rounded-xl text-base font-medium font-inter">
                                             Receive
                                         </button>
                                     </div>
@@ -1209,15 +1339,32 @@ export default function NewUI() {
                 src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" 
                 strategy="afterInteractive"
                 onLoad={() => {
-                    // Load GLTFLoader after THREE.js is loaded
-                    const gltfScript = document.createElement('script');
-                    gltfScript.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js';
-                    document.head.appendChild(gltfScript);
+                    console.log('Three.js loaded');
                     
-                    // Load OrbitControls after THREE.js is loaded
-                    const controlsScript = document.createElement('script');
-                    controlsScript.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js';
-                    document.head.appendChild(controlsScript);
+                    // Wait a bit for Three.js to fully initialize
+                    setTimeout(() => {
+                        // Load GLTFLoader after THREE.js is loaded
+                        const gltfScript = document.createElement('script');
+                        gltfScript.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js';
+                        gltfScript.onload = () => {
+                            console.log('GLTFLoader loaded');
+                            // Load OrbitControls after GLTFLoader is loaded
+                            const controlsScript = document.createElement('script');
+                            controlsScript.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js';
+                            controlsScript.onload = () => {
+                                console.log('OrbitControls loaded');
+                                console.log('All Three.js components ready');
+                            };
+                            controlsScript.onerror = (error) => {
+                                console.error('Failed to load OrbitControls:', error);
+                            };
+                            document.head.appendChild(controlsScript);
+                        };
+                        gltfScript.onerror = (error) => {
+                            console.error('Failed to load GLTFLoader:', error);
+                        };
+                        document.head.appendChild(gltfScript);
+                    }, 100);
                 }}
             />
             
