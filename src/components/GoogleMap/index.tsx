@@ -9,8 +9,6 @@ import {
     useMap,
     Pin
 } from '@vis.gl/react-google-maps';
-import { MarkerClusterer } from '@googlemaps/markerclusterer';
-import type { Marker } from '@googlemaps/markerclusterer';
 import BottomDrawer from '../BottomDrawer';
 
 // Google Maps API types
@@ -71,37 +69,6 @@ interface GoogleMapProps {
 
 const GroceryStoreMarkers = ({ stores, onStoreClick }: { stores: GroceryStore[], onStoreClick: (store: GroceryStore) => void }) => {
     const map = useMap();
-    const [markers, setMarkers] = useState<{ [key: string]: Marker }>({});
-    const clusterer = useRef<MarkerClusterer | null>(null);
-
-    // Initialize MarkerClusterer
-    useEffect(() => {
-        if (!map) return;
-        if (!clusterer.current) {
-            clusterer.current = new MarkerClusterer({ map });
-        }
-    }, [map]);
-
-    // Update markers
-    useEffect(() => {
-        clusterer.current?.clearMarkers();
-        clusterer.current?.addMarkers(Object.values(markers));
-    }, [markers]);
-
-    const setMarkerRef = (marker: Marker | null, key: string) => {
-        if (marker && markers[key]) return;
-        if (!marker && !markers[key]) return;
-
-        setMarkers(prev => {
-            if (marker) {
-                return { ...prev, [key]: marker };
-            } else {
-                const newMarkers = { ...prev };
-                delete newMarkers[key];
-                return newMarkers;
-            }
-        });
-    };
 
     const handleClick = useCallback((store: GroceryStore) => {
         if (!map) return;
@@ -126,7 +93,6 @@ const GroceryStoreMarkers = ({ stores, onStoreClick }: { stores: GroceryStore[],
                         lat: store.geometry.location.lat(),
                         lng: store.geometry.location.lng()
                     }}
-                    ref={marker => setMarkerRef(marker, store.place_id)}
                     clickable={true}
                     onClick={() => handleClick(store)}
                 >
@@ -144,37 +110,6 @@ const GroceryStoreMarkers = ({ stores, onStoreClick }: { stores: GroceryStore[],
 
 const GasStationMarkers = ({ stations, onStationClick }: { stations: GasStation[], onStationClick: (station: GasStation) => void }) => {
     const map = useMap();
-    const [markers, setMarkers] = useState<{ [key: string]: Marker }>({});
-    const clusterer = useRef<MarkerClusterer | null>(null);
-
-    // Initialize MarkerClusterer
-    useEffect(() => {
-        if (!map) return;
-        if (!clusterer.current) {
-            clusterer.current = new MarkerClusterer({ map });
-        }
-    }, [map]);
-
-    // Update markers
-    useEffect(() => {
-        clusterer.current?.clearMarkers();
-        clusterer.current?.addMarkers(Object.values(markers));
-    }, [markers]);
-
-    const setMarkerRef = (marker: Marker | null, key: string) => {
-        if (marker && markers[key]) return;
-        if (!marker && !markers[key]) return;
-
-        setMarkers(prev => {
-            if (marker) {
-                return { ...prev, [key]: marker };
-            } else {
-                const newMarkers = { ...prev };
-                delete newMarkers[key];
-                return newMarkers;
-            }
-        });
-    };
 
     const handleClick = useCallback((station: GasStation) => {
         if (!map) return;
@@ -199,7 +134,6 @@ const GasStationMarkers = ({ stations, onStationClick }: { stations: GasStation[
                         lat: station.geometry.location.lat(),
                         lng: station.geometry.location.lng()
                     }}
-                    ref={marker => setMarkerRef(marker, station.place_id)}
                     clickable={true}
                     onClick={() => handleClick(station)}
                 >
@@ -443,19 +377,6 @@ export default function GoogleMapComponent({ apiKey }: GoogleMapProps) {
                         <GasStationMarkers stations={gasStations} onStationClick={handleGasStationClick} />
                     )}
 
-                    {/* Loading indicator */}
-                    {(isLoadingStores || isLoadingGasStations) && (
-                        <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-lg">
-                            <div className="flex items-center space-x-2">
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-500"></div>
-                                <span className="text-sm text-gray-700">
-                                    {isLoadingStores && isLoadingGasStations ? 'Loading stores and gas stations...' :
-                                     isLoadingStores ? 'Loading grocery stores...' :
-                                     'Loading gas stations...'}
-                                </span>
-                            </div>
-                        </div>
-                    )}
                 </Map>
             )}
 

@@ -2,7 +2,7 @@ import { auth } from '@/auth';
 import ClientProviders from '@/providers';
 import '@worldcoin/mini-apps-ui-kit-react/styles.css';
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import { Geist, Geist_Mono, Roboto } from 'next/font/google';
 import './globals.css';
 
 const geistSans = Geist({
@@ -13,6 +13,12 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: '--font-geist-mono',
   subsets: ['latin'],
+});
+
+const roboto = Roboto({
+  variable: '--font-roboto',
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '700'],
 });
 
 export const metadata: Metadata = {
@@ -35,7 +41,7 @@ export default async function RootLayout({
           src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&loading=async&libraries=places`}
         />
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable} `}>
+      <body className={`${geistSans.variable} ${geistMono.variable} ${roboto.variable}`}>
         <ClientProviders session={session}>{children}</ClientProviders>
       </body>
     </html>

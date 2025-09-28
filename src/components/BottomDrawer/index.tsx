@@ -15,7 +15,6 @@ interface BottomDrawerProps {
         photos?: any[];
         place_id?: string;
         types?: string[];
-        distance?: number;
         geometry?: {
             location: {
                 lat(): number;
@@ -171,7 +170,7 @@ export default function BottomDrawer({ isOpen, onClose, title, children, storeDa
 
                     {/* Content */}
                     <div className="px-5 pt-2 pb-8">
-                        {/* Title with icon and distance */}
+                        {/* Title with icon */}
                         <div className="flex items-center space-x-3 mb-6">
                             <div className="w-12 h-12 bg-white border border-gray-200 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
                                 <img
@@ -184,11 +183,6 @@ export default function BottomDrawer({ isOpen, onClose, title, children, storeDa
                                 <h2 className="text-2xl font-bold text-black font-system">
                                     {title}
                                 </h2>
-                                {storeData?.distance && (
-                                    <p className="text-sm text-gray-500">
-                                        {storeData.distance.toFixed(1)} Miles away
-                                    </p>
-                                )}
                             </div>
                         </div>
 
@@ -213,9 +207,9 @@ export default function BottomDrawer({ isOpen, onClose, title, children, storeDa
                             </button>
                             <button
                                 onClick={handleEnterPrice}
-                                className="flex-1 bg-green-500 text-white font-semibold text-base py-3 rounded-full hover:bg-green-600 transition-colors"
+                                className="flex-1 bg-green-500 text-white font-semibold text-base py-4 px-6 rounded-xl hover:bg-green-600 active:bg-green-700 transition-all duration-200 shadow-lg hover:shadow-xl border-2 border-green-400 hover:border-green-300"
                             >
-                                Enter Price
+                                Enter Prices
                             </button>
                         </div>
                     </div>

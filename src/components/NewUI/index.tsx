@@ -27,6 +27,9 @@ export default function NewUI() {
     const [isLoadingPlaces, setIsLoadingPlaces] = useState(false);
     const [lastLocationFetch, setLastLocationFetch] = useState<number>(0);
 
+    // Category selection state
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
     // Autocomplete state
     const [autocompleteService, setAutocompleteService] = useState<any>(null);
     const [autocompleteSessionToken, setAutocompleteSessionToken] = useState<any>(null);
@@ -886,7 +889,7 @@ export default function NewUI() {
                         )}
 
                         {/* Floating Header - Overlay on top of map */}
-                        <div className="absolute top-0 left-0 right-0 px-6 pt-12 pb-6 z-20">
+                        <div className="absolute top-0 left-0 right-0 px-6 pt-6 pb-6 z-20">
                             <div className="flex items-center justify-between">
                                 {/* Search Container - Fixed height to prevent layout shifts */}
                                 <div className="flex-1 mr-4">
@@ -1025,9 +1028,9 @@ export default function NewUI() {
 
             case 'wallet':
                 return (
-                    <div className="min-h-screen bg-[#F4F4F8] font-inter flex flex-col overflow-y-auto">
+                    <div className="h-screen bg-[#F4F4F8] font-inter">
                         {/* Header */}
-                        <div className="px-4 pt-12 pb-4 flex-shrink-0">
+                        <div className="px-6 pt-6 pb-6">
                             <div className="flex items-center justify-between">
                                 {/* Notifications Icon */}
                                 <div
@@ -1051,7 +1054,7 @@ export default function NewUI() {
                         </div>
 
                         {/* Logo Viewer - Fixed height, moved up */}
-                        <div className="h-80 relative flex-shrink-0">
+                        <div className="h-80 relative">
                             <div id="wallet-logo-container" className="w-full h-full" key="wallet-logo-container">
                                 <div id="wallet-loading" className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-[#333] text-xl z-1000 font-inter">
                                     <div className="border-3 border-solid border-gray-200 border-t-[#333] rounded-full w-10 h-10 animate-spin mx-auto"></div>
@@ -1060,35 +1063,17 @@ export default function NewUI() {
                         </div>
 
                         {/* Token Balance - Now visible */}
-                        <div className="px-4 py-6 flex-shrink-0 bg-white/10 backdrop-blur-sm">
+                        <div className="px-2.5 py-2 bg-white/10 backdrop-blur-sm">
                             <div className="text-center">
-                                <div className="text-5xl sm:text-6xl md:text-7xl font-bold text-[#1C1C1E] tracking-tight leading-tight font-inter">
-                                    1238 VALER
+                                <div className="text-[4rem] sm:text-[6rem] md:text-[8rem] lg:text-[12rem] xl:text-[16rem] font-bold text-[#1C1C1E] tracking-tight leading-none whitespace-nowrap overflow-hidden" style={{ fontFamily: 'Garet Book' }}>
+                                    165 val
                                 </div>
                             </div>
                         </div>
 
-                        {/* Additional wallet content - scrollable */}
-                        <div className="flex-1 px-4 pb-20">
+                        {/* Additional wallet content */}
+                        <div className="px-4 pb-20">
                             <div className="space-y-4">
-                                {/* Recent Transactions */}
-                                <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
-                                    <h3 className="text-xl font-semibold text-[#1C1C1E] mb-3 font-inter">Recent Transactions</h3>
-                                    <p className="text-gray-600 text-base font-inter">No recent transactions</p>
-                                </div>
-                                
-                                {/* Quick Actions */}
-                                <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
-                                    <h3 className="text-xl font-semibold text-[#1C1C1E] mb-3 font-inter">Quick Actions</h3>
-                                    <div className="flex gap-3 mt-3">
-                                        <button className="flex-1 bg-blue-500 text-white py-3 px-4 rounded-xl text-base font-medium font-inter">
-                                            Send
-                                        </button>
-                                        <button className="flex-1 bg-green-500 text-white py-3 px-4 rounded-xl text-base font-medium font-inter">
-                                            Receive
-                                        </button>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -1254,10 +1239,11 @@ export default function NewUI() {
                                 ].map((category, index) => (
                                     <div
                                         key={category.name}
-                                        className={`px-4 py-2 rounded-full font-medium text-sm transition-all duration-300 cursor-pointer font-inter flex items-center gap-2 flex-shrink-0 ${index === 0
+                                        className={`px-4 py-2 rounded-full font-medium text-sm transition-all duration-300 cursor-pointer font-inter flex items-center gap-2 flex-shrink-0 ${selectedCategory === category.name
                                             ? 'bg-[#1C1C1E] text-white'
                                             : 'bg-[#E0E0E0] text-[#1C1C1E]'
                                             }`}
+                                        onClick={() => setSelectedCategory(selectedCategory === category.name ? null : category.name)}
                                     >
                                         <span className="text-base">{category.icon}</span>
                                         {category.name}
@@ -1460,8 +1446,10 @@ export default function NewUI() {
                             }}
                         >
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="w-6 h-6">
-                                <path d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                <path d="M12 7V12L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                <path d="M19 7H5C3.89543 7 3 7.89543 3 9V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V9C21 7.89543 20.1046 7 19 7Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                <path d="M7 7V5C7 3.89543 7.89543 3 9 3H15C16.1046 3 17 3.89543 17 5V7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                <path d="M12 12V16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                <path d="M10 14H14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                             </svg>
                         </div>
                     </div>
