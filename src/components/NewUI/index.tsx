@@ -301,8 +301,14 @@ export default function NewUI() {
             return;
         }
 
-        // Clear any existing content
-        container.innerHTML = '';
+        // Check if already initialized
+        const existingCanvas = container.querySelector('canvas');
+        if (existingCanvas) {
+            console.log('Logo already loaded, skipping initialization');
+            return;
+        }
+
+        // Show loading indicator
         if (loadingElement) {
             loadingElement.style.display = 'block';
         }
@@ -424,8 +430,9 @@ export default function NewUI() {
         );
 
         // Animation loop
+        let animationId: number;
         function animate() {
-            requestAnimationFrame(animate);
+            animationId = requestAnimationFrame(animate);
 
             if (logoPivot) {
                 logoPivot.rotation.z += 0.01;
@@ -449,7 +456,13 @@ export default function NewUI() {
 
         // Cleanup function
         return () => {
+            // Stop the animation loop
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
             window.removeEventListener('resize', onWindowResize);
+            
+            // Dispose of Three.js resources
             if (renderer) {
                 renderer.dispose();
             }
@@ -463,19 +476,35 @@ export default function NewUI() {
         }
     }, [activeTab]);
 
-    // Initialize Three.js logo viewer when wallet tab is active
+    // Initialize Three.js logo viewer when wallet tab is active (only once)
     useEffect(() => {
+        let cleanup: (() => void) | undefined;
+
         if (activeTab === 'wallet') {
-            // Wait for Three.js to load
-            const checkThreeJS = () => {
-                if ((window as any).THREE && (window as any).THREE.GLTFLoader && (window as any).THREE.OrbitControls) {
-                    initializeLogoViewer();
-                } else {
-                    setTimeout(checkThreeJS, 100);
-                }
-            };
-            checkThreeJS();
+            // Check if logo is already loaded
+            const container = document.getElementById('wallet-logo-container');
+            const hasCanvas = container && container.querySelector('canvas');
+            
+            if (!hasCanvas) {
+                // Wait for Three.js to load
+                const checkThreeJS = () => {
+                    if ((window as any).THREE && (window as any).THREE.GLTFLoader && (window as any).THREE.OrbitControls) {
+                        cleanup = initializeLogoViewer();
+                    } else {
+                        setTimeout(checkThreeJS, 100);
+                    }
+                };
+                checkThreeJS();
+            }
         }
+
+        // Cleanup function - only clean up on unmount, not on tab switch
+        return () => {
+            // Only cleanup when component unmounts, not when switching tabs
+            if (cleanup) {
+                cleanup();
+            }
+        };
     }, [activeTab, initializeLogoViewer]);
 
     // Handle autocomplete search
@@ -847,11 +876,11 @@ export default function NewUI() {
 
             case 'wallet':
                 return (
-                    <div className="h-screen bg-[#F4F4F8] font-inter flex flex-col overflow-hidden">
+                    <div className="min-h-screen bg-[#F4F4F8] font-inter flex flex-col overflow-y-auto">
                         {/* Header */}
-                        <div className="px-6 pt-12 pb-6 flex-shrink-0">
+                        <div className="px-4 pt-12 pb-4 flex-shrink-0">
                             <div className="flex items-center justify-between">
-                                {/* Notifications Icon - Using World UI Kit styling */}
+                                {/* Notifications Icon */}
                                 <div
                                     className="w-10 h-10 flex items-center justify-center cursor-pointer bg-white/20 backdrop-blur-md border border-white/30 rounded-full"
                                     onClick={() => setShowNotifications(true)}
@@ -862,7 +891,7 @@ export default function NewUI() {
                                     </svg>
                                 </div>
 
-                                {/* Profile Icon - Standardized positioning */}
+                                {/* Profile Icon */}
                                 <div className="w-10 h-10 flex items-center justify-center cursor-pointer bg-white/20 backdrop-blur-md border border-white/30 rounded-full" onClick={() => setShowProfile(true)}>
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-black">
                                         <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -872,23 +901,44 @@ export default function NewUI() {
                             </div>
                         </div>
 
-                        {/* Wallet Content */}
-                        <div className="flex-1 flex flex-col">
-                            {/* Logo Viewer - Top Half */}
-                            <div className="flex-1 relative">
-                                <div id="wallet-logo-container" className="w-full h-full">
-                                    <div id="wallet-loading" className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-[#333] text-lg z-1000">
-                                        <div className="border-3 border-solid border-gray-200 border-t-[#333] rounded-full w-8 h-8 animate-spin mx-auto mb-2"></div>
-                                        Loading Logo...
-                                    </div>
+                        {/* Logo Viewer - Fixed height, moved up */}
+                        <div className="h-80 relative flex-shrink-0">
+                            <div id="wallet-logo-container" className="w-full h-full" key={`wallet-logo-${activeTab}`}>
+                                <div id="wallet-loading" className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-[#333] text-lg z-1000">
+                                    <div className="border-3 border-solid border-gray-200 border-t-[#333] rounded-full w-8 h-8 animate-spin mx-auto mb-2"></div>
+                                    Loading Logo...
                                 </div>
                             </div>
+                        </div>
 
-                            {/* Token Balance - Bottom Half */}
-                            <div className="px-6 pb-6 flex-shrink-0">
-                                <div className="text-center">
-                                    <div className="text-4xl font-bold text-[#1C1C1E] font-['Neo_Sans'] tracking-tight">
-                                        1238 VALER
+                        {/* Token Balance - Now visible */}
+                        <div className="px-4 py-6 flex-shrink-0 bg-white/10 backdrop-blur-sm">
+                            <div className="text-center">
+                                <div className="text-3xl sm:text-4xl font-bold text-[#1C1C1E] tracking-tight leading-tight font-inter">
+                                    1238 VALER
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Additional wallet content - scrollable */}
+                        <div className="flex-1 px-4 pb-20">
+                            <div className="space-y-4">
+                                {/* Recent Transactions */}
+                                <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
+                                    <h3 className="text-lg font-semibold text-[#1C1C1E] mb-2">Recent Transactions</h3>
+                                    <p className="text-gray-600 text-sm">No recent transactions</p>
+                                </div>
+                                
+                                {/* Quick Actions */}
+                                <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
+                                    <h3 className="text-lg font-semibold text-[#1C1C1E] mb-2">Quick Actions</h3>
+                                    <div className="flex gap-3 mt-3">
+                                        <button className="flex-1 bg-blue-500 text-white py-2 px-4 rounded-xl text-sm font-medium">
+                                            Send
+                                        </button>
+                                        <button className="flex-1 bg-green-500 text-white py-2 px-4 rounded-xl text-sm font-medium">
+                                            Receive
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -1155,9 +1205,21 @@ export default function NewUI() {
     return (
         <>
             {/* Three.js Scripts */}
-            <Script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" strategy="lazyOnload" />
-            <Script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js" strategy="lazyOnload" />
-            <Script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js" strategy="lazyOnload" />
+            <Script 
+                src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" 
+                strategy="afterInteractive"
+                onLoad={() => {
+                    // Load GLTFLoader after THREE.js is loaded
+                    const gltfScript = document.createElement('script');
+                    gltfScript.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js';
+                    document.head.appendChild(gltfScript);
+                    
+                    // Load OrbitControls after THREE.js is loaded
+                    const controlsScript = document.createElement('script');
+                    controlsScript.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js';
+                    document.head.appendChild(controlsScript);
+                }}
+            />
             
             <style jsx>{`
                 /* Hide all scrollbars completely */
