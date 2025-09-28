@@ -1,4 +1,4 @@
-// TEMPORARY: Redirecting to new design for UI development
+// Redirect to new design for UI development
 // Original code is preserved in src/app-backup/page.tsx
 import { redirect } from 'next/navigation';
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useSession, signOut } from 'next-auth/react';
 import { Button } from '@worldcoin/mini-apps-ui-kit-react';
 import Script from 'next/script';
 import GoogleMapComponent from '../GoogleMap';
@@ -15,6 +16,7 @@ declare global {
 }
 
 export default function NewUI() {
+    const { data: session } = useSession();
     const [activeTab, setActiveTab] = useState('home');
     const [isSearchExpanded, setIsSearchExpanded] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
@@ -44,6 +46,32 @@ export default function NewUI() {
     const [suggestedStores, setSuggestedStores] = useState<any[]>([]);
     const [userCity, setUserCity] = useState<string>('');
 
+    // Profile helpers (client-only)
+    const ProfileAvatar = () => {
+        const { data } = useSession();
+        const src = data?.user?.profilePictureUrl;
+        if (src) {
+            return (
+                <img src={src} alt="Profile" className="w-24 h-24 object-cover" />
+            );
+        }
+        return (
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" className="text-gray-500">
+                <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+        );
+    };
+
+    const ProfileName = () => {
+        const { data } = useSession();
+        const wallet = data?.user?.walletAddress;
+        const username = data?.user?.username || (wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : 'User');
+        return (
+            <h2 className="text-xl font-bold text-[#1C1C1E] font-inter">{username}</h2>
+        );
+    };
+
     // Handle search focus and blur
     useEffect(() => {
         if (searchInputRef.current && isSearchExpanded) {
@@ -59,7 +87,7 @@ export default function NewUI() {
 
     // Add/remove body and html class for scrollable tabs
     useEffect(() => {
-        if (activeTab === 'home' || activeTab === 'wallet') {
+        if (activeTab === 'home') {
             document.body.classList.add('main-tab-scrollable');
             document.documentElement.classList.add('main-tab-scrollable');
         } else {
@@ -842,27 +870,49 @@ export default function NewUI() {
                     <div className="flex-1 bg-white rounded-t-3xl">
                         <div className="px-6 pt-6">
                             <div className="flex flex-col items-center mb-8">
-                                <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mb-4">
-                                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" className="text-gray-500">
-                                        <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                        <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                                    </svg>
+                                <div className="w-24 h-24 bg-gray-200 rounded-full flex items-center justify-center mb-4 overflow-hidden">
+                                    {/* Profile picture from session if available */}
+                                    <ProfileAvatar />
                                 </div>
-                                <h2 className="text-xl font-bold text-[#1C1C1E] font-inter">John Doe</h2>
-                                <p className="text-gray-600 text-sm font-inter">john.doe@example.com</p>
+                                <ProfileName />
                             </div>
 
                             <div className="space-y-4">
                                 {[
-                                    { title: 'Personal Information', icon: '👤' },
-                                    { title: 'Payment Methods', icon: '💳' },
-                                    { title: 'Order History', icon: '📦' },
-                                    { title: 'Settings', icon: '⚙️' },
-                                    { title: 'Help & Support', icon: '❓' }
+                                    { title: 'Personal Information', key: 'user' },
+                                    { title: 'Payment Methods', key: 'card' },
+                                    { title: 'Order History', key: 'history' },
+                                    { title: 'Settings', key: 'settings' },
                                 ].map((item, index) => (
                                     <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl cursor-pointer hover:bg-gray-100 transition-colors">
                                         <div className="flex items-center space-x-3">
-                                            <span className="text-xl">{item.icon}</span>
+                                            <div className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
+                                                {item.key === 'user' && (
+                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-[#1C1C1E]">
+                                                        <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.939 15 5.922 15.421 5.172 16.172C4.421 16.922 4 17.939 4 19V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                        <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                    </svg>
+                                                )}
+                                                {item.key === 'card' && (
+                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-[#1C1C1E]">
+                                                        <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="2" />
+                                                        <path d="M3 10H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                                    </svg>
+                                                )}
+                                                {item.key === 'history' && (
+                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-[#1C1C1E]">
+                                                        <path d="M12 8V12L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                        <path d="M12 21C16.971 21 21 16.971 21 12C21 7.029 16.971 3 12 3C7.029 3 3 7.029 3 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                        <path d="M3 3V7H7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                    </svg>
+                                                )}
+                                                {item.key === 'settings' && (
+                                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-[#1C1C1E]">
+                                                        <path d="M12 15C13.657 15 15 13.657 15 12C15 10.343 13.657 9 12 9C10.343 9 9 10.343 9 12C9 13.657 10.343 15 12 15Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                        <path d="M19.4 15A1.65 1.65 0 0 0 20 13.6V10.4A1.65 1.65 0 0 0 19.4 9L17.55 8.1L16.9 6.1A1.65 1.65 0 0 0 15.3 5.1L12.7 5.1L10.1 5.1A1.65 1.65 0 0 0 8.5 6.1L7.85 8.1L6 9A1.65 1.65 0 0 0 5.4 10.4V13.6A1.65 1.65 0 0 0 6 15L7.85 15.9L8.5 17.9A1.65 1.65 0 0 0 10.1 18.9H13.9A1.65 1.65 0 0 0 15.5 17.9L16.15 15.9L19.4 15Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                    </svg>
+                                                )}
+                                            </div>
                                             <span className="font-medium text-[#1C1C1E] font-inter">{item.title}</span>
                                         </div>
                                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-gray-400">
@@ -870,6 +920,26 @@ export default function NewUI() {
                                         </svg>
                                     </div>
                                 ))}
+                                
+                                {/* Logout Button */}
+                                <div 
+                                    className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl cursor-pointer hover:bg-gray-100 transition-colors"
+                                    onClick={() => signOut({ redirect: false })}
+                                >
+                                    <div className="flex items-center space-x-3">
+                                        <div className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center flex-shrink-0 shadow-sm">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-[#1C1C1E]">
+                                                <path d="M10 17H6C5.46957 17 4.96086 16.7893 4.58579 16.4142C4.21071 16.0391 4 15.5304 4 15V9C4 8.46957 4.21071 7.96086 4.58579 7.58579C4.96086 7.21071 5.46957 7 6 7H10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                <path d="M17 16L21 12L17 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                <path d="M21 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                            </svg>
+                                        </div>
+                                        <span className="font-medium text-[#1C1C1E] font-inter">Logout</span>
+                                    </div>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-gray-400">
+                                        <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -934,10 +1004,11 @@ export default function NewUI() {
                     <div className="h-screen w-full relative overflow-hidden">
                         {/* Google Maps - Full screen background */}
                         <div className="absolute inset-0">
-                            <GoogleMapComponent 
-                                apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'your_api_key_here'} 
-                                onStoreSelection={handleStoreSelection}
-                            />
+                        <GoogleMapComponent 
+                            apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'your_api_key_here'} 
+                            onStoreSelection={handleStoreSelection}
+                            initialCenter={userLocation}
+                        />
                         </div>
 
                         {/* Blur overlay when search is expanded */}

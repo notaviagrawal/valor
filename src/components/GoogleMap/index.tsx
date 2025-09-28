@@ -66,6 +66,7 @@ interface GasStation {
 interface GoogleMapProps {
     apiKey: string;
     onStoreSelection?: (store: any) => void;
+    initialCenter?: { lat: number; lng: number } | null;
 }
 
 const GroceryStoreMarkers = ({ stores, onStoreClick }: { stores: GroceryStore[], onStoreClick: (store: GroceryStore) => void }) => {
@@ -150,8 +151,8 @@ const GasStationMarkers = ({ stations, onStationClick }: { stations: GasStation[
     );
 };
 
-export default function GoogleMapComponent({ apiKey, onStoreSelection }: GoogleMapProps) {
-    const [center, setCenter] = useState<{ lat: number; lng: number } | null>(null);
+export default function GoogleMapComponent({ apiKey, onStoreSelection, initialCenter }: GoogleMapProps) {
+    const [center, setCenter] = useState<{ lat: number; lng: number } | null>(initialCenter ?? null);
     const [groceryStores, setGroceryStores] = useState<GroceryStore[]>([]);
     const [gasStations, setGasStations] = useState<GasStation[]>([]);
     const [isLoadingStores, setIsLoadingStores] = useState(false);
@@ -248,34 +249,12 @@ export default function GoogleMapComponent({ apiKey, onStoreSelection }: GoogleM
         }
     }, []);
 
-    // Get user location on mount
+    // Respect initialCenter from parent; fall back to SF if still null when map renders
     useEffect(() => {
-        const getLocation = () => {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const userLocation = {
-                            lat: position.coords.latitude,
-                            lng: position.coords.longitude
-                        };
-                        setCenter(userLocation);
-                    },
-                    (error) => {
-                        console.error('Error getting location:', error);
-                        // Fallback to default location
-                        const defaultLocation = { lat: 37.7749, lng: -122.4194 }; // San Francisco
-                        setCenter(defaultLocation);
-                    }
-                );
-            } else {
-                // Fallback to default location
-                const defaultLocation = { lat: 37.7749, lng: -122.4194 }; // San Francisco
-                setCenter(defaultLocation);
-            }
-        };
-
-        getLocation();
-    }, []);
+        if (initialCenter && (!center || (center.lat !== initialCenter.lat || center.lng !== initialCenter.lng))) {
+            setCenter(initialCenter);
+        }
+    }, [initialCenter]);
 
     const handleCameraChanged = useCallback((ev: MapCameraChangedEvent) => {
         const newCenter = ev.detail.center;
