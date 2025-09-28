@@ -1,0 +1,3 @@
+# Allow access to env sample file for Cursor
+!.env.sample
+!.env.local
