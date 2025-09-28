@@ -49,6 +49,22 @@ interface GroceryStore {
     types?: string[];
 }
 
+interface GasStation {
+    place_id: string;
+    name: string;
+    geometry: {
+        location: {
+            lat(): number;
+            lng(): number;
+        };
+    };
+    rating?: number;
+    price_level?: number;
+    vicinity?: string;
+    photos?: any[];
+    types?: string[];
+}
+
 interface GoogleMapProps {
     apiKey: string;
 }
@@ -126,15 +142,90 @@ const GroceryStoreMarkers = ({ stores, onStoreClick }: { stores: GroceryStore[],
     );
 };
 
+const GasStationMarkers = ({ stations, onStationClick }: { stations: GasStation[], onStationClick: (station: GasStation) => void }) => {
+    const map = useMap();
+    const [markers, setMarkers] = useState<{ [key: string]: Marker }>({});
+    const clusterer = useRef<MarkerClusterer | null>(null);
+
+    // Initialize MarkerClusterer
+    useEffect(() => {
+        if (!map) return;
+        if (!clusterer.current) {
+            clusterer.current = new MarkerClusterer({ map });
+        }
+    }, [map]);
+
+    // Update markers
+    useEffect(() => {
+        clusterer.current?.clearMarkers();
+        clusterer.current?.addMarkers(Object.values(markers));
+    }, [markers]);
+
+    const setMarkerRef = (marker: Marker | null, key: string) => {
+        if (marker && markers[key]) return;
+        if (!marker && !markers[key]) return;
+
+        setMarkers(prev => {
+            if (marker) {
+                return { ...prev, [key]: marker };
+            } else {
+                const newMarkers = { ...prev };
+                delete newMarkers[key];
+                return newMarkers;
+            }
+        });
+    };
+
+    const handleClick = useCallback((station: GasStation) => {
+        if (!map) return;
+        console.log('Gas station clicked:', station.name);
+
+        // Pan to station location
+        map.panTo({
+            lat: station.geometry.location.lat(),
+            lng: station.geometry.location.lng()
+        });
+
+        // Open drawer
+        onStationClick(station);
+    }, [map, onStationClick]);
+
+    return (
+        <>
+            {stations.map((station) => (
+                <AdvancedMarker
+                    key={station.place_id}
+                    position={{
+                        lat: station.geometry.location.lat(),
+                        lng: station.geometry.location.lng()
+                    }}
+                    ref={marker => setMarkerRef(marker, station.place_id)}
+                    clickable={true}
+                    onClick={() => handleClick(station)}
+                >
+                    <Pin
+                        background={'#FF6B35'}
+                        glyphColor={'#fff'}
+                        borderColor={'#fff'}
+                        scale={1.0}
+                    />
+                </AdvancedMarker>
+            ))}
+        </>
+    );
+};
+
 export default function GoogleMapComponent({ apiKey }: GoogleMapProps) {
     const [center, setCenter] = useState<{ lat: number; lng: number } | null>(null);
     const [groceryStores, setGroceryStores] = useState<GroceryStore[]>([]);
+    const [gasStations, setGasStations] = useState<GasStation[]>([]);
     const [isLoadingStores, setIsLoadingStores] = useState(false);
+    const [isLoadingGasStations, setIsLoadingGasStations] = useState(false);
     const lastFetchRef = useRef<{ lat: number; lng: number; zoom: number } | null>(null);
 
-    // Drawer state
+    // Drawer state - now can handle both store types
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-    const [selectedStore, setSelectedStore] = useState<GroceryStore | null>(null);
+    const [selectedStore, setSelectedStore] = useState<GroceryStore | GasStation | null>(null);
 
     // Debug logging
     console.log('API Key received:', apiKey ? `${apiKey.substring(0, 10)}...` : 'undefined');
@@ -185,6 +276,43 @@ export default function GoogleMapComponent({ apiKey }: GoogleMapProps) {
         }
     }, []);
 
+    // Fetch gas stations using Google Places API
+    const fetchGasStations = useCallback(async (location: { lat: number; lng: number }, zoom: number) => {
+        if (!window.google || !window.google.maps || !window.google.maps.places) {
+            console.error('Google Maps API not loaded');
+            return;
+        }
+
+        setIsLoadingGasStations(true);
+
+        try {
+            const service = new window.google.maps.places.PlacesService(
+                document.createElement('div')
+            );
+
+            const request = {
+                location: new window.google.maps.LatLng(location.lat, location.lng),
+                type: 'gas_station',
+                rankBy: window.google.maps.places.RankBy.DISTANCE
+            };
+
+            service.nearbySearch(request, (results: any, status: any) => {
+                if (status === window.google.maps.places.PlacesServiceStatus.OK && results) {
+                    setGasStations(results.slice(0, 20)); // Limit to 20 stations
+                    console.log(`Found ${results.length} gas stations`);
+                } else {
+                    console.error('Places API error:', status);
+                    setGasStations([]);
+                }
+                setIsLoadingGasStations(false);
+            });
+        } catch (error) {
+            console.error('Error fetching gas stations:', error);
+            setGasStations([]);
+            setIsLoadingGasStations(false);
+        }
+    }, []);
+
     // Get user location on mount
     useEffect(() => {
         const getLocation = () => {
@@ -229,10 +357,12 @@ export default function GoogleMapComponent({ apiKey }: GoogleMapProps) {
                 Math.abs(newZoom - lastFetch.zoom) > 1) {
 
                 lastFetchRef.current = { lat: newCenter.lat, lng: newCenter.lng, zoom: newZoom };
+                // Fetch both grocery stores and gas stations
                 fetchGroceryStores({ lat: newCenter.lat, lng: newCenter.lng }, newZoom);
+                fetchGasStations({ lat: newCenter.lat, lng: newCenter.lng }, newZoom);
             }
         }
-    }, [fetchGroceryStores]);
+    }, [fetchGroceryStores, fetchGasStations]);
 
     // Calculate distance between two points
     const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
@@ -249,6 +379,11 @@ export default function GoogleMapComponent({ apiKey }: GoogleMapProps) {
     // Drawer handlers
     const handleStoreClick = useCallback((store: GroceryStore) => {
         setSelectedStore(store);
+        setIsDrawerOpen(true);
+    }, []);
+
+    const handleGasStationClick = useCallback((station: GasStation) => {
+        setSelectedStore(station);
         setIsDrawerOpen(true);
     }, []);
 
@@ -303,12 +438,21 @@ export default function GoogleMapComponent({ apiKey }: GoogleMapProps) {
                         <GroceryStoreMarkers stores={groceryStores} onStoreClick={handleStoreClick} />
                     )}
 
+                    {/* Gas Station Markers */}
+                    {gasStations.length > 0 && (
+                        <GasStationMarkers stations={gasStations} onStationClick={handleGasStationClick} />
+                    )}
+
                     {/* Loading indicator */}
-                    {isLoadingStores && (
+                    {(isLoadingStores || isLoadingGasStations) && (
                         <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-lg">
                             <div className="flex items-center space-x-2">
                                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-500"></div>
-                                <span className="text-sm text-gray-700">Loading grocery stores...</span>
+                                <span className="text-sm text-gray-700">
+                                    {isLoadingStores && isLoadingGasStations ? 'Loading stores and gas stations...' :
+                                     isLoadingStores ? 'Loading grocery stores...' :
+                                     'Loading gas stations...'}
+                                </span>
                             </div>
                         </div>
                     )}

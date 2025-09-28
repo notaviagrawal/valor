@@ -88,11 +88,12 @@ export default function BottomDrawer({ isOpen, onClose, title, children, storeDa
         };
     }, [isOpen, onClose]);
 
-    // Handle swipe down to close
+    // Handle swipe down to close with smooth animation
     const handleTouchStart = (e: React.TouchEvent) => {
         const touch = e.touches[0];
         const startY = touch.clientY;
         const startTime = Date.now();
+        let isDragging = false;
 
         const handleTouchMove = (e: TouchEvent) => {
             const touch = e.touches[0];
@@ -101,8 +102,13 @@ export default function BottomDrawer({ isOpen, onClose, title, children, storeDa
             const currentTime = Date.now();
             const deltaTime = currentTime - startTime;
 
-            // If swiping down fast enough, close the drawer
-            if (deltaY > 100 && deltaTime < 300) {
+            // Start dragging if moved more than 10px
+            if (Math.abs(deltaY) > 10) {
+                isDragging = true;
+            }
+
+            // If swiping down fast enough, close the drawer with animation
+            if (deltaY > 80 && deltaTime < 400 && isDragging) {
                 onClose();
                 document.removeEventListener('touchmove', handleTouchMove);
                 document.removeEventListener('touchend', handleTouchEnd);
@@ -118,27 +124,36 @@ export default function BottomDrawer({ isOpen, onClose, title, children, storeDa
         document.addEventListener('touchend', handleTouchEnd);
     };
 
-    if (!isOpen) return null;
-
     return (
         <>
             {/* Backdrop/Scrim */}
             <div
-                className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 transition-opacity duration-300"
+                className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 transition-opacity duration-500 ease-out"
+                style={{
+                    opacity: isOpen ? 1 : 0,
+                    pointerEvents: isOpen ? 'auto' : 'none'
+                }}
                 onClick={onClose}
             />
 
             {/* Drawer */}
             <div
                 ref={drawerRef}
-                className="fixed bottom-0 left-0 right-0 z-50 transform transition-transform duration-300 ease-out"
+                className="fixed bottom-0 left-0 right-0 z-50 transform transition-all duration-500 ease-out"
                 style={{
                     paddingBottom: 'calc(env(safe-area-inset-bottom) + 80px)',
-                    transform: isOpen ? 'translateY(0)' : 'translateY(100%)'
+                    transform: isOpen ? 'translateY(0)' : 'translateY(100%)',
+                    opacity: isOpen ? 1 : 0
                 }}
                 onTouchStart={handleTouchStart}
             >
-                <div className="bg-white rounded-t-3xl shadow-lg mx-4 mb-4" style={{ boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.15)' }}>
+                <div 
+                    className="bg-white rounded-t-3xl shadow-lg mx-4 mb-4 transition-transform duration-500 ease-out"
+                    style={{ 
+                        boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.15)',
+                        transform: isOpen ? 'scale(1)' : 'scale(0.95)'
+                    }}
+                >
                     {/* Handle bar */}
                     <div className="flex justify-center pt-3 pb-2">
                         <div className="w-10 h-1 bg-gray-300 rounded-full"></div>
