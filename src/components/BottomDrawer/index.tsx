@@ -22,9 +22,10 @@ interface BottomDrawerProps {
             };
         };
     };
+    onEnterPrice?: (storeData: any) => void;
 }
 
-export default function BottomDrawer({ isOpen, onClose, title, children, storeData }: BottomDrawerProps) {
+export default function BottomDrawer({ isOpen, onClose, title, children, storeData, onEnterPrice }: BottomDrawerProps) {
     const drawerRef = useRef<HTMLDivElement>(null);
 
     // Helper function to get the correct icon based on store type
@@ -64,8 +65,12 @@ export default function BottomDrawer({ isOpen, onClose, title, children, storeDa
 
     // Handle Enter Price action
     const handleEnterPrice = () => {
-        // TODO: Implement price entry functionality
-        console.log('Enter price for:', storeData?.name);
+        if (onEnterPrice && storeData) {
+            // Close the drawer first
+            onClose();
+            // Trigger store selection with the same data structure as store cards
+            onEnterPrice(storeData);
+        }
     };
 
     // Handle escape key

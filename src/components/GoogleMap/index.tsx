@@ -65,6 +65,7 @@ interface GasStation {
 
 interface GoogleMapProps {
     apiKey: string;
+    onStoreSelection?: (store: any) => void;
 }
 
 const GroceryStoreMarkers = ({ stores, onStoreClick }: { stores: GroceryStore[], onStoreClick: (store: GroceryStore) => void }) => {
@@ -149,7 +150,7 @@ const GasStationMarkers = ({ stations, onStationClick }: { stations: GasStation[
     );
 };
 
-export default function GoogleMapComponent({ apiKey }: GoogleMapProps) {
+export default function GoogleMapComponent({ apiKey, onStoreSelection }: GoogleMapProps) {
     const [center, setCenter] = useState<{ lat: number; lng: number } | null>(null);
     const [groceryStores, setGroceryStores] = useState<GroceryStore[]>([]);
     const [gasStations, setGasStations] = useState<GasStation[]>([]);
@@ -401,6 +402,7 @@ export default function GoogleMapComponent({ apiKey }: GoogleMapProps) {
                     ) : 0,
                     geometry: selectedStore.geometry
                 } : undefined}
+                onEnterPrice={onStoreSelection}
             />
         </APIProvider>
     );

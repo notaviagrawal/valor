@@ -4,6 +4,8 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@worldcoin/mini-apps-ui-kit-react';
 import Script from 'next/script';
 import GoogleMapComponent from '../GoogleMap';
+import StorePage from '../StorePage';
+import { getCountryFromLocation } from '../../lib/country-utils';
 
 // Google Maps API types
 declare global {
@@ -19,6 +21,10 @@ export default function NewUI() {
     const [showProfile, setShowProfile] = useState(false);
     const searchInputRef = useRef<HTMLInputElement>(null);
     const [searchValue, setSearchValue] = useState('');
+    
+    // Store page state
+    const [showStorePage, setShowStorePage] = useState(false);
+    const [selectedStore, setSelectedStore] = useState<{name: string, id: string, country: string} | null>(null);
 
     // Location and places state
     const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -736,9 +742,48 @@ export default function NewUI() {
         setShowPredictions(false);
         setPredictions([]);
 
-        // Here you could navigate to the selected place or perform other actions
-        console.log('Selected place:', prediction);
-    }, []);
+        // Navigate to store page
+        handleStoreSelection(prediction);
+    }, [userLocation]);
+
+    // Handle store selection (from predictions or store cards)
+    const handleStoreSelection = async (store: any) => {
+        try {
+            let country = 'United States'; // Default fallback
+            
+            // Try to get country from store location if available
+            if (store.geometry?.location) {
+                const lat = store.geometry.location.lat();
+                const lng = store.geometry.location.lng();
+                country = await getCountryFromLocation(lat, lng);
+            } else if (userLocation) {
+                // Use user location as fallback
+                country = await getCountryFromLocation(userLocation.lat, userLocation.lng);
+            }
+
+            setSelectedStore({
+                name: store.name || store.structured_formatting?.main_text || 'Unknown Store',
+                id: store.place_id || store.name || 'unknown',
+                country: country
+            });
+            setShowStorePage(true);
+        } catch (error) {
+            console.error('Error getting country:', error);
+            // Fallback with default country
+            setSelectedStore({
+                name: store.name || store.structured_formatting?.main_text || 'Unknown Store',
+                id: store.place_id || store.name || 'unknown',
+                country: 'United States'
+            });
+            setShowStorePage(true);
+        }
+    };
+
+    // Handle back from store page
+    const handleBackFromStore = () => {
+        setShowStorePage(false);
+        setSelectedStore(null);
+    };
 
     // Helper function to get the correct icon based on store type
     const getStoreIcon = (store: any) => {
@@ -757,6 +802,18 @@ export default function NewUI() {
     };
 
     const renderContent = () => {
+        // Show store page if a store is selected
+        if (showStorePage && selectedStore) {
+            return (
+                <StorePage
+                    storeName={selectedStore.name}
+                    storeId={selectedStore.id}
+                    country={selectedStore.country}
+                    onBack={handleBackFromStore}
+                />
+            );
+        }
+
         if (showProfile) {
             return (
                 <div className="min-h-screen bg-[#F0F2F5] font-inter flex flex-col">
@@ -877,7 +934,10 @@ export default function NewUI() {
                     <div className="h-screen w-full relative overflow-hidden">
                         {/* Google Maps - Full screen background */}
                         <div className="absolute inset-0">
-                            <GoogleMapComponent apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'your_api_key_here'} />
+                            <GoogleMapComponent 
+                                apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'your_api_key_here'} 
+                                onStoreSelection={handleStoreSelection}
+                            />
                         </div>
 
                         {/* Blur overlay when search is expanded */}
@@ -1271,7 +1331,11 @@ export default function NewUI() {
                             ) : (
                                 <div className="flex gap-4 overflow-x-auto overflow-y-hidden" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                                     {groceryStores.map((store, index) => (
-                                        <div key={index} className="relative group cursor-pointer flex-shrink-0">
+                                        <div 
+                                            key={index} 
+                                            className="relative group cursor-pointer flex-shrink-0"
+                                            onClick={() => handleStoreSelection(store)}
+                                        >
                                             <div className="relative w-[280px] h-[280px] rounded-2xl overflow-hidden">
                                                 <img
                                                     src={store.photos && store.photos[0] ? store.photos[0].getUrl({ maxWidth: 300, maxHeight: 300 }) : 'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=300&h=200&fit=crop'}
@@ -1309,7 +1373,11 @@ export default function NewUI() {
                             ) : (
                                 <div className="flex gap-4 overflow-x-auto overflow-y-hidden" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                                     {gasStations.map((station, index) => (
-                                        <div key={index} className="relative group cursor-pointer flex-shrink-0">
+                                        <div 
+                                            key={index} 
+                                            className="relative group cursor-pointer flex-shrink-0"
+                                            onClick={() => handleStoreSelection(station)}
+                                        >
                                             <div className="relative w-[280px] h-[280px] rounded-2xl overflow-hidden">
                                                 <img
                                                     src={station.photos && station.photos[0] ? station.photos[0].getUrl({ maxWidth: 300, maxHeight: 300 }) : 'https://images.unsplash.com/photo-1594736797933-d0401ba2fe65?w=300&h=200&fit=crop'}
