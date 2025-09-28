@@ -48,15 +48,15 @@ export default function NewUI() {
         setSearchValue('');
     }, [activeTab]);
 
-    // Add/remove body and html class for scrollable main tab
+    // Add/remove body and html class for scrollable tabs
     useEffect(() => {
-        if (activeTab === 'home') {
+        if (activeTab === 'home' || activeTab === 'wallet') {
             document.body.classList.add('main-tab-scrollable');
             document.documentElement.classList.add('main-tab-scrollable');
         } else {
             document.body.classList.remove('main-tab-scrollable');
             document.documentElement.classList.remove('main-tab-scrollable');
-            // Reset scroll position to top when switching away from home tab
+            // Reset scroll position to top when switching away from scrollable tabs
             window.scrollTo(0, 0);
             document.documentElement.scrollTop = 0;
             document.body.scrollTop = 0;
@@ -408,13 +408,13 @@ export default function NewUI() {
         // Try to load the GLTF file with additional error handling
         try {
             console.log('Starting GLTF load...');
-            loader.load(
-                '/valerlogo.gltf',
-                function(gltf: any) {
+        loader.load(
+            '/valerlogo.gltf',
+            function(gltf: any) {
                     clearTimeout(loadingTimeout);
                     console.log('GLTF loaded successfully:', gltf);
                     
-                    const logo = gltf.scene;
+                const logo = gltf.scene;
                 
                 // Scale the logo
                 const box = new THREE.Box3().setFromObject(logo);
@@ -514,7 +514,7 @@ export default function NewUI() {
                     scene.add(logoPivot);
                     
                     // Hide loading indicator
-                    if (loadingElement) {
+                if (loadingElement) {
                         loadingElement.style.display = 'none';
                     }
                     
@@ -538,7 +538,7 @@ export default function NewUI() {
         // Animation loop
         let animationId: number;
         let fadeInStartTime: number | null = null;
-        const fadeInDuration = 1000; // 1 second fade-in
+        const fadeInDuration = 500; // 0.5 second fade-in
         
         function animate() {
             animationId = requestAnimationFrame(animate);
@@ -607,36 +607,54 @@ export default function NewUI() {
         }
     }, [activeTab]);
 
-    // Initialize Three.js logo viewer when wallet tab is active (only once)
+    // Initialize Three.js logo viewer only when wallet tab is active
     useEffect(() => {
         let cleanup: (() => void) | undefined;
 
-        if (activeTab === 'wallet') {
-            // Check if logo is already loaded
+        if (activeTab === 'wallet' && !showNotifications && !showProfile) {
+            // Only initialize when wallet tab is active and no overlays are showing
             const container = document.getElementById('wallet-logo-container');
-            const hasCanvas = container && container.querySelector('canvas');
             
-            if (!hasCanvas) {
-                // Wait for Three.js to load
-                const checkThreeJS = () => {
-                    if ((window as any).THREE && (window as any).THREE.GLTFLoader && (window as any).THREE.OrbitControls) {
-                        cleanup = initializeLogoViewer();
-                    } else {
-                        setTimeout(checkThreeJS, 100);
+            if (container) {
+                const hasCanvas = container.querySelector('canvas');
+                
+                if (!hasCanvas) {
+                    // Wait for Three.js to load
+                    const checkThreeJS = () => {
+                        if ((window as any).THREE && (window as any).THREE.GLTFLoader && (window as any).THREE.OrbitControls) {
+                            cleanup = initializeLogoViewer();
+                        } else {
+                            setTimeout(checkThreeJS, 100);
+                        }
+                    };
+                    checkThreeJS();
+                }
+            }
+        } else {
+            // Clean up logo when switching away from wallet tab or when overlays are shown
+            const container = document.getElementById('wallet-logo-container');
+            if (container) {
+                const canvas = container.querySelector('canvas');
+                if (canvas) {
+                    // Dispose of Three.js resources
+                    const renderer = (canvas as any)._renderer;
+                    if (renderer && renderer.dispose) {
+                        renderer.dispose();
                     }
-                };
-                checkThreeJS();
+                    // Remove canvas
+                    canvas.remove();
+                }
             }
         }
 
-        // Cleanup function - only clean up on unmount, not on tab switch
+        // Cleanup function - only clean up on component unmount
         return () => {
-            // Only cleanup when component unmounts, not when switching tabs
             if (cleanup) {
                 cleanup();
             }
         };
-    }, [activeTab, initializeLogoViewer]);
+    }, [activeTab, showNotifications, showProfile, initializeLogoViewer]);
+
 
     // Handle autocomplete search
     const handleAutocompleteSearch = useCallback((query: string) => {
@@ -1034,7 +1052,7 @@ export default function NewUI() {
 
                         {/* Logo Viewer - Fixed height, moved up */}
                         <div className="h-80 relative flex-shrink-0">
-                            <div id="wallet-logo-container" className="w-full h-full" key={`wallet-logo-${activeTab}`}>
+                            <div id="wallet-logo-container" className="w-full h-full" key="wallet-logo-container">
                                 <div id="wallet-loading" className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-[#333] text-xl z-1000 font-inter">
                                     <div className="border-3 border-solid border-gray-200 border-t-[#333] rounded-full w-10 h-10 animate-spin mx-auto"></div>
                                 </div>
@@ -1367,6 +1385,7 @@ export default function NewUI() {
                     }, 100);
                 }}
             />
+
             
             <style jsx>{`
                 /* Hide all scrollbars completely */
@@ -1387,7 +1406,7 @@ export default function NewUI() {
                     display: none;
                 }
 
-                /* Override global overflow hidden for main tab page only */
+                /* Override global overflow hidden for scrollable tabs (home and wallet) */
                 :global(body.main-tab-scrollable) {
                     overflow: auto !important;
                 }
