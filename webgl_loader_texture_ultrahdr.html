@@ -37,9 +37,21 @@
 				metalness: 1.0,
 				roughness: 0.0,
 				exposure: 1.0,
-				resolution: '2k',
+				backgroundImage: 'spruit_sunrise_4k.hdr.jpg',
 				type: 'HalfFloatType'
 			};
+
+			// Available texture files - auto-generated from textures/equirectangular directory
+			// To update this list when adding new textures, run: node generate-texture-list.js
+			const availableTextures = [
+				"desert-hdr-optimised-12k_4K_49572a3b-6465-4b18-820b-5bf3ed00bf16.jpg",
+				"over-the-clouds-sunset-w-mountain_8K_6bd6575a-89b5-49da-b113-406b6b415133.jpg",
+				"sci-fi-above-alien-planet-atmosphere_8K_77aba538-cd17-4658-ae6f-2ce129130070.jpg",
+				"shanghai-bund_8K_14fbad8f-9183-441c-8144-25424a0f629a.jpg",
+				"spruit_sunrise_4k.hdr.jpg",
+				"the-sky-is-on-fire_4K_13d1392b-531a-4d6f-8dcd-cd89e8cb8ee3.jpg",
+				"vaporwave-hdri_4K_fddb5d9d-ca66-4936-8d7e-9f8cf638f85d.jpg"
+			];
 
 			let renderer, scene, camera, controls, model, pivotGroup, loader, gltfLoader;
 
@@ -127,11 +139,11 @@
 				loader = new UltraHDRLoader();
 				loader.setDataType( THREE.FloatType );
 
-				const loadEnvironment = function ( resolution = '2k', type = 'HalfFloatType' ) {
+				const loadEnvironment = function ( imageName = 'spruit_sunrise_4k.hdr.jpg', type = 'HalfFloatType' ) {
 
 					loader.setDataType( THREE[ type ] );
 
-					loader.load( `textures/equirectangular/over-the-clouds-sunset-w-mountain_8K_6bd6575a-89b5-49da-b113-406b6b415133.jpg`, function ( texture ) {
+					loader.load( `textures/equirectangular/${imageName}`, function ( texture ) {
 
 						texture.mapping = THREE.EquirectangularReflectionMapping;
 						texture.needsUpdate = true;
@@ -143,7 +155,7 @@
 
 				};
 
-				loadEnvironment( params.resolution, params.type );
+				loadEnvironment( params.backgroundImage, params.type );
 
 				const gui = new GUI();
 
@@ -151,14 +163,14 @@
 				gui.add( params, 'metalness', 0, 1, 0.01 );
 				gui.add( params, 'roughness', 0, 1, 0.01 );
 				gui.add( params, 'exposure', 0, 4, 0.01 );
-				gui.add( params, 'resolution', [ '2k', '4k' ] ).onChange( ( value ) => {
+				gui.add( params, 'backgroundImage', availableTextures ).onChange( ( value ) => {
 
 					loadEnvironment( value, params.type );
 			
 				} );
 				gui.add( params, 'type', [ 'HalfFloatType', 'FloatType' ] ).onChange( ( value ) => {
 
-					loadEnvironment( params.resolution, value );
+					loadEnvironment( params.backgroundImage, value );
 			
 				} );
 
