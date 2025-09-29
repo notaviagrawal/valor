@@ -15,9 +15,10 @@ interface StorePageProps {
   country: string;
   storeType?: 'grocery' | 'gas';
   onBack: () => void;
+  onStakeConfirmed?: () => void;
 }
 
-export default function StorePage({ storeName, storeId, country, storeType = 'grocery', onBack }: StorePageProps) {
+export default function StorePage({ storeName, storeId, country, storeType = 'grocery', onBack, onStakeConfirmed }: StorePageProps) {
   const [selectedProduct, setSelectedProduct] = useState<string | null>(storeType === 'gas' ? 'regular' : null);
   const [price, setPrice] = useState<string>('');
 
@@ -74,8 +75,8 @@ export default function StorePage({ storeName, storeId, country, storeType = 'gr
             <div
               key={product}
               className={`px-4 py-3 rounded-full font-medium text-sm transition-all duration-300 cursor-pointer font-inter flex items-center gap-2 flex-shrink-0 ${selectedProduct === product
-                  ? 'bg-[#1C1C1E] text-white'
-                  : 'bg-[#E0E0E0] text-[#1C1C1E]'
+                ? 'bg-[#1C1C1E] text-white'
+                : 'bg-[#E0E0E0] text-[#1C1C1E]'
                 }`}
               onClick={() => setSelectedProduct(product)}
             >
@@ -138,7 +139,7 @@ export default function StorePage({ storeName, storeId, country, storeType = 'gr
             </div>
 
             <div className="space-y-3">
-              <Transaction price={price} product={productLabel} storeId={storeId} />
+              <Transaction price={price} product={productLabel} storeId={storeId} onStakeConfirmed={onStakeConfirmed} />
               <Button onClick={() => setSelectedProduct(null)} variant="secondary" className="w-full">
                 {storeType === 'gas' ? 'Change Gas Type' : 'Change Product'}
               </Button>

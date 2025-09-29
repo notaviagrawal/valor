@@ -14,6 +14,7 @@ interface TransactionProps {
   storeId: string;
   onStakeValidated?: (stakeId: `0x${string}`) => void;
   onStakeReset?: () => void;
+  onStakeConfirmed?: () => void;
   className?: string;
 }
 
@@ -26,7 +27,7 @@ interface TransactionProps {
  * 2. Update the transaction_id from the response to poll completion
  * 3. Wait in a useEffect for the transaction to complete
  */
-export const Transaction = ({ price, product, storeId, onStakeValidated, onStakeReset, className }: TransactionProps) => {
+export const Transaction = ({ price, product, storeId, onStakeValidated, onStakeReset, onStakeConfirmed, className }: TransactionProps) => {
   // See the code for this contract here: https://worldscan.org/address/0xF0882554ee924278806d708396F1a7975b732522#code
   const myContractToken = '0xF0882554ee924278806d708396F1a7975b732522';
   const distributorAddress = process.env.NEXT_PUBLIC_DISTRIBUTOR_ADDRESS as `0x${string}` | undefined; // Faucet distributor for 5 VAL
@@ -73,6 +74,8 @@ export const Transaction = ({ price, product, storeId, onStakeValidated, onStake
         setButtonState('success');
         setTimeout(() => {
           setButtonState(undefined);
+          // Call the callback to auto-close the store page after showing success message
+          onStakeConfirmed?.();
         }, 3000);
       } else if (isError) {
         console.error('Transaction failed:', error);
@@ -84,7 +87,7 @@ export const Transaction = ({ price, product, storeId, onStakeValidated, onStake
         }, 3000);
       }
     }
-  }, [isConfirmed, isConfirming, isError, error, transactionId]);
+  }, [isConfirmed, isConfirming, isError, error, transactionId, onStakeConfirmed]);
 
   // Update stake price when prop changes
   useEffect(() => {
@@ -215,32 +218,6 @@ export const Transaction = ({ price, product, storeId, onStakeValidated, onStake
   return (
     <div className={className}>
       <div className="grid w-full gap-4">
-        <p className="text-lg font-semibold">Transaction</p>
-        {product && <p className="text-sm text-gray-600">Product: {product}</p>}
-
-        {/* Price input */}
-        <div className="grid gap-2">
-          <label className="text-sm">Price</label>
-          <input
-            value={stakePrice}
-            onChange={(e) => {
-              const v = e.target.value;
-              setStakePrice(v);
-              const num = Number(v);
-              if (Number.isFinite(num)) {
-                const bananaPrices = [0.57, 0.59, 0.61, 0.62, 0.63];
-                const min = Math.min(...bananaPrices);
-                const max = Math.max(...bananaPrices);
-                setIsFaucetPriceValid(num >= min - 0.1 && num <= max + 0.1);
-              } else {
-                setIsFaucetPriceValid(false);
-              }
-            }}
-            className="rounded border px-3 py-2"
-            placeholder="Enter price"
-          />
-        </div>
-        {/* No live banner; validation happens after stake */}
         <LiveFeedback
           label={{ failed: 'Stake failed', pending: 'Staking…', success: 'Stake submitted' }}
           state={whichButton === 'stake' ? buttonState : undefined}

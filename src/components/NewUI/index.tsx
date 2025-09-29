@@ -7,6 +7,7 @@ import GoogleMapComponent from '../GoogleMap';
 import StorePage from '../StorePage';
 import { getCountryFromLocation } from '../../lib/country-utils';
 import { useClaimActions } from '../../hooks/useClaimActions';
+import { MiniKit, VerificationLevel } from '@worldcoin/minikit-js';
 
 // Google Maps API types
 declare global {
@@ -26,6 +27,13 @@ export default function NewUI() {
 
     // Claim actions hook
     const { claimReward, claimRefund, buttonState, whichButton, isConfirming } = useClaimActions();
+
+    // Verification state
+    const [verificationState, setVerificationState] = useState<'pending' | 'success' | 'failed' | undefined>(undefined);
+    const [isVerified, setIsVerified] = useState(false);
+
+    // Balance state
+    const [balance, setBalance] = useState(165);
 
     // Store page state
     const [showStorePage, setShowStorePage] = useState(false);
@@ -647,6 +655,19 @@ export default function NewUI() {
         }
     }, [activeTab]);
 
+    // Monitor claim actions and update balance
+    useEffect(() => {
+        if (buttonState === 'success') {
+            if (whichButton === 'claimVal') {
+                // Claim reward successful - add 5 to balance
+                setBalance(prev => prev + 5);
+            } else if (whichButton === 'claimStake') {
+                // Refund successful - add 1 to balance
+                setBalance(prev => prev + 1);
+            }
+        }
+    }, [buttonState, whichButton]);
+
     // Initialize Three.js logo viewer only when wallet tab is active
     useEffect(() => {
         let cleanup: (() => void) | undefined;
@@ -823,6 +844,54 @@ export default function NewUI() {
         setSelectedStore(null);
     };
 
+    // Handle auto-close after stake confirmation
+    const handleStakeConfirmed = () => {
+        setShowStorePage(false);
+        setSelectedStore(null);
+    };
+
+    // Handle World ID verification
+    const handleVerifyHuman = async () => {
+        setVerificationState('pending');
+        try {
+            const result = await MiniKit.commandsAsync.verify({
+                action: 'verification', // Make sure to create this in the developer portal -> incognito actions
+                verification_level: VerificationLevel.Device,
+            });
+            console.log('Verification result:', result.finalPayload);
+
+            // Verify the proof on server side
+            const response = await fetch('/api/verify-proof', {
+                method: 'POST',
+                body: JSON.stringify({
+                    payload: result.finalPayload,
+                    action: 'verification',
+                }),
+            });
+
+            const data = await response.json();
+            if (data.verifyRes.success) {
+                setVerificationState('success');
+                setIsVerified(true);
+                // Reset state after 3 seconds
+                setTimeout(() => {
+                    setVerificationState(undefined);
+                }, 3000);
+            } else {
+                setVerificationState('failed');
+                setTimeout(() => {
+                    setVerificationState(undefined);
+                }, 3000);
+            }
+        } catch (error) {
+            console.error('Verification failed:', error);
+            setVerificationState('failed');
+            setTimeout(() => {
+                setVerificationState(undefined);
+            }, 3000);
+        }
+    };
+
     // Helper function to get the correct icon based on store type
     const getStoreIcon = (store: any) => {
         if (store.types?.includes('gas_station')) {
@@ -849,6 +918,7 @@ export default function NewUI() {
                     country={selectedStore.country}
                     storeType={selectedStore.type || 'grocery'}
                     onBack={handleBackFromStore}
+                    onStakeConfirmed={handleStakeConfirmed}
                 />
             );
         }
@@ -924,6 +994,79 @@ export default function NewUI() {
                                         </svg>
                                     </div>
                                 ))}
+
+                                {/* Verify Human Status Button */}
+                                <div
+                                    className={`flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-colors ${isVerified
+                                        ? 'bg-green-50 border border-green-200'
+                                        : verificationState === 'pending'
+                                            ? 'bg-blue-50 border border-blue-200'
+                                            : verificationState === 'success'
+                                                ? 'bg-green-50 border border-green-200'
+                                                : verificationState === 'failed'
+                                                    ? 'bg-red-50 border border-red-200'
+                                                    : 'bg-gray-50 hover:bg-gray-100'
+                                        }`}
+                                    onClick={handleVerifyHuman}
+                                >
+                                    <div className="flex items-center space-x-3">
+                                        <div className={`w-10 h-10 border rounded-full flex items-center justify-center flex-shrink-0 shadow-sm ${isVerified
+                                            ? 'bg-green-100 border-green-200'
+                                            : verificationState === 'pending'
+                                                ? 'bg-blue-100 border-blue-200'
+                                                : verificationState === 'success'
+                                                    ? 'bg-green-100 border-green-200'
+                                                    : verificationState === 'failed'
+                                                        ? 'bg-red-100 border-red-200'
+                                                        : 'bg-white border-gray-200'
+                                            }`}>
+                                            {isVerified || verificationState === 'success' ? (
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-green-600">
+                                                    <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                </svg>
+                                            ) : verificationState === 'pending' ? (
+                                                <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                                            ) : verificationState === 'failed' ? (
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-red-600">
+                                                    <path d="M12 9V13M12 17H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                </svg>
+                                            ) : (
+                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-[#1C1C1E]">
+                                                    <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                </svg>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className={`font-medium font-inter ${isVerified || verificationState === 'success'
+                                                ? 'text-green-700'
+                                                : verificationState === 'pending'
+                                                    ? 'text-blue-700'
+                                                    : verificationState === 'failed'
+                                                        ? 'text-red-700'
+                                                        : 'text-[#1C1C1E]'
+                                                }`}>
+                                                {isVerified
+                                                    ? 'Human Verified'
+                                                    : verificationState === 'pending'
+                                                        ? 'Verifying...'
+                                                        : verificationState === 'success'
+                                                            ? 'Verification Successful'
+                                                            : verificationState === 'failed'
+                                                                ? 'Verification Failed'
+                                                                : 'Verify Human Status'
+                                                }
+                                            </span>
+                                            {!isVerified && verificationState !== 'pending' && verificationState !== 'success' && verificationState !== 'failed' && (
+                                                <span className="text-sm text-gray-500 font-inter">Tap to verify with World ID</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {!isVerified && verificationState !== 'pending' && (
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-gray-400">
+                                            <path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                        </svg>
+                                    )}
+                                </div>
 
                                 {/* Logout Button */}
                                 <div
@@ -1230,33 +1373,53 @@ export default function NewUI() {
                         </div>
 
                         {/* Token Balance - Now visible */}
-                        <div className="px-2.5 py-2 bg-white/10 backdrop-blur-sm">
+                        <div className="px-2.5 py-1 bg-white/10 backdrop-blur-sm">
                             <div className="text-center">
-                                <div className="text-[4rem] sm:text-[6rem] md:text-[8rem] lg:text-[12rem] xl:text-[16rem] font-bold text-[#1C1C1E] tracking-tight leading-none whitespace-nowrap overflow-hidden" style={{ fontFamily: 'Garet Book' }}>
-                                    165 val
+                                <div className="text-[3rem] sm:text-[5rem] md:text-[6rem] lg:text-[8rem] xl:text-[10rem] font-bold text-[#1C1C1E] tracking-tight leading-none whitespace-nowrap overflow-hidden" style={{ fontFamily: 'Garet Book' }}>
+                                    {balance} val
                                 </div>
                             </div>
                         </div>
 
                         {/* Claim Actions */}
-                        <div className="px-4 py-4">
-                            <div className="space-y-4">
-                                <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-2xl p-4">
-                                    <h3 className="text-lg font-semibold text-[#1C1C1E] mb-4 font-inter">Actions</h3>
-                                    <div className="space-y-3">
+                        <div className="px-6 py-2">
+                            <div className="flex space-x-4">
+                                {/* Claim Reward Button */}
+                                <div className="flex-1 bg-white/20 backdrop-blur-md border border-white/30 rounded-2xl p-3">
+                                    <div className="flex items-center justify-center space-x-3">
+                                        <div className="w-10 h-10 bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-[#1C1C1E]">
+                                                <path d="M12 2L15.09 8.26L22 9L17 14L18.18 21L12 17.77L5.82 21L7 14L2 9L8.91 8.26L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                            </svg>
+                                        </div>
                                         <button
                                             onClick={claimReward}
                                             disabled={buttonState === 'pending' || isConfirming}
-                                            className="w-full bg-[#1C1C1E] text-white py-3 px-4 rounded-xl font-medium font-inter hover:bg-[#333] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="text-center flex-1"
                                         >
-                                            {whichButton === 'claimVal' && buttonState === 'pending' ? 'Claiming reward...' : 'Claim Reward (5 VAL)'}
+                                            <div className="text-lg font-bold text-[#1C1C1E] font-inter">
+                                                {whichButton === 'claimVal' && buttonState === 'pending' ? 'Claiming...' : 'Claim'}
+                                            </div>
                                         </button>
+                                    </div>
+                                </div>
+
+                                {/* Refund Button */}
+                                <div className="flex-1 bg-white/20 backdrop-blur-md border border-white/30 rounded-2xl p-3">
+                                    <div className="flex items-center justify-center space-x-3">
+                                        <div className="w-10 h-10 bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center">
+                                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-[#1C1C1E]">
+                                                <path d="M3 10H21M7 15H17M12 3V21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                            </svg>
+                                        </div>
                                         <button
                                             onClick={claimRefund}
                                             disabled={buttonState === 'pending' || isConfirming}
-                                            className="w-full bg-white/20 backdrop-blur-md border border-white/30 text-[#1C1C1E] py-3 px-4 rounded-xl font-medium font-inter hover:bg-white/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            className="text-center flex-1"
                                         >
-                                            {whichButton === 'claimStake' && buttonState === 'pending' ? 'Processing refund...' : 'Refund (1 VAL)'}
+                                            <div className="text-lg font-bold text-[#1C1C1E] font-inter">
+                                                {whichButton === 'claimStake' && buttonState === 'pending' ? 'Processing...' : 'Refund'}
+                                            </div>
                                         </button>
                                     </div>
                                 </div>

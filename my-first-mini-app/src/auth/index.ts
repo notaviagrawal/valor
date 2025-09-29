@@ -26,7 +26,7 @@ declare module 'next-auth' {
 // For more information on each option (and a full list of options) go to
 // https://authjs.dev/getting-started/authentication/credentials
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  secret: process.env.AUTH_SECRET,
+  secret: process.env.NEXTAUTH_SECRET,
   trustHost: true, // Allow any host in development
   session: { strategy: 'jwt' },
   providers: [
@@ -63,10 +63,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           const userInfo = await MiniKit.getUserInfo(finalPayload.address);
 
           return {
-            id: '0xcbc440d2bb2371a20f67041e48fe74b421d7bb87', // Override wallet address
-            walletAddress: '0xcbc440d2bb2371a20f67041e48fe74b421d7bb87', // Override wallet address
+            id: finalPayload.address,
             ...userInfo,
-            username: 'notaviagrawal', // Override username
           };
         } catch (error) {
           console.error('Authorization error:', error);
@@ -89,7 +87,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     session: async ({ session, token }) => {
       if (token.userId) {
         session.user.id = token.userId as string;
-        session.user.walletAddress = token.walletAddress as string;
+        session.user.walletAddress = token.address as string;
         session.user.username = token.username as string;
         session.user.profilePictureUrl = token.profilePictureUrl as string;
       }

@@ -34,6 +34,10 @@ export const useClaimActions = () => {
 
     // Claim 5 VAL via distributor faucet
     const claimReward = async () => {
+        console.log('claimReward called');
+        console.log('distributorAddress:', distributorAddress);
+        console.log('NEXT_PUBLIC_DISTRIBUTOR_ADDRESS:', process.env.NEXT_PUBLIC_DISTRIBUTOR_ADDRESS);
+        
         if (!distributorAddress) {
             console.error('Missing NEXT_PUBLIC_DISTRIBUTOR_ADDRESS');
             return;
@@ -54,6 +58,7 @@ export const useClaimActions = () => {
         ] as const;
 
         try {
+            console.log('Sending transaction to MiniKit...');
             const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
                 transaction: [
                     {
@@ -64,6 +69,8 @@ export const useClaimActions = () => {
                     },
                 ],
             });
+
+            console.log('MiniKit response:', finalPayload);
 
             if (finalPayload.status === 'success') {
                 console.log('Claim reward submitted, waiting for confirmation:', finalPayload.transaction_id);
