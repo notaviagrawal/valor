@@ -1,0 +1,19 @@
+{
+  "name": "valor-3d-showcase",
+  "version": "1.0.0",
+  "description": "Three.js 3D showcase with Valor logo and dynamic backgrounds",
+  "main": "webgl_loader_texture_ultrahdr.html",
+  "scripts": {
+    "dev": "python3 -m http.server 3000",
+    "start": "python3 -m http.server 3000"
+  },
+  "keywords": [
+    "threejs",
+    "3d",
+    "webgl",
+    "valor",
+    "showcase"
+  ],
+  "author": "Avi Agrawal",
+  "license": "MIT"
+}
