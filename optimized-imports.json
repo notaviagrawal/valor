@@ -1,0 +1,7 @@
+{
+  "three": "./build/three.module.js",
+  "three/addons/libs/lil-gui.module.min.js": "./jsm/libs/lil-gui.module.min.js",
+  "three/addons/loaders/UltraHDRLoader.js": "./jsm/loaders/UltraHDRLoader.js",
+  "three/addons/loaders/GLTFLoader.js": "./jsm/loaders/GLTFLoader.js",
+  "three/addons/controls/OrbitControls.js": "./jsm/controls/OrbitControls.js"
+}
