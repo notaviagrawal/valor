@@ -8,6 +8,17 @@
 	</head>
 	<body>
 
+		<!-- Loading Screen -->
+		<div id="loading-screen">
+			<div id="loading-content">
+				<h1 id="loading-title">valor</h1>
+				<div id="loading-bar-container">
+					<div id="loading-bar"></div>
+				</div>
+				<p id="loading-text">Loading environments...</p>
+			</div>
+		</div>
+
 		<div id="info">
 			<h1>valor</h1>
 		</div>
@@ -33,43 +44,31 @@
 
 			const params = {
 				autoRotate: true,
+				autoRotateBackground: true,
 				metalness: 1.0,
 				roughness: 0.0,
 				exposure: 1.0,
-				backgroundImage: 'spruit_sunrise_4k.hdr.jpg',
+				backgroundImage: 'sunset-mountain.jpg',
 				type: 'HalfFloatType'
 			};
 
 			// Available texture files - auto-generated from textures/equirectangular directory
 			// To update this list when adding new textures, run: node generate-texture-list.js
 			const availableTextures = [
-				"abstract-room.jpg",
 				"aerial-mountain.jpg",
 				"alien-planet.jpg",
-				"bird-eye-night.jpg",
-				"blue-sky.jpg",
 				"bridge.jpg",
 				"city-sunset.jpg",
 				"cloudscape-sunset.jpg",
 				"desert.jpg",
-				"earth-planet.jpg",
 				"earth-space.jpg",
-				"elevator-room.jpg",
 				"foggy-morning.jpg",
-				"forest-trees.jpg",
-				"glacier-lake.jpg",
 				"hilly-terrain.jpg",
-				"mountain-twilight.jpg",
-				"mountains-ocean.jpg",
-				"neon-square.jpg",
 				"pink-sunrise.jpg",
 				"reflective-hall.jpg",
 				"sci-fi-abstract.jpg",
 				"sci-fi-planet.jpg",
 				"shanghai.jpg",
-				"sky-on-fire.jpg",
-				"snow-mountains.jpg",
-				"spruit_sunrise_4k.hdr.jpg",
 				"sunflowers.jpg",
 				"sunset-mountain.jpg",
 				"sunset-ocean.jpg",
@@ -77,6 +76,29 @@
 			];
 
 			let renderer, scene, camera, controls, model, pivotGroup, loader, gltfLoader;
+			
+			// Smart caching system
+			const textureCache = new Map();
+			const loadingTextures = new Set();
+			let currentTextureIndex = 0;
+			let backgroundRotationTimer = null;
+			let nextTextureIndex = 1;
+			let preloadTimer = null;
+			let preloadIdleId = null;
+			
+			// Preloaded scenes configuration (order matters - first is displayed first)
+			const preloadedScenes = [
+				"alien-planet.jpg",
+				"desert.jpg",
+				"sunflowers.jpg",
+				"foggy-morning.jpg",
+				"sci-fi-abstract.jpg",
+				"city-sunset.jpg"
+			];
+			let preloadedScenesQueue = [...preloadedScenes];
+			let isUsingPreloadedScenes = false;
+			let currentRotationInterval = 10000; // Start with 10s, will change to 5s for preloaded
+			let remainingScenes = []; // Will hold scenes that weren't preloaded
 
 			init();
 
@@ -162,39 +184,296 @@
 				loader = new UltraHDRLoader();
 				loader.setDataType( THREE.FloatType );
 
-				const loadEnvironment = function ( imageName = 'spruit_sunrise_4k.hdr.jpg', type = 'HalfFloatType' ) {
+				// Smart texture loading with caching and preloading
+				const loadEnvironment = function ( imageName = 'spruit_sunrise_4k.hdr.jpg', type = 'HalfFloatType', isPreload = false ) {
 
+					// Check if texture is already cached
+					const cacheKey = `${imageName}_${type}`;
+					if (textureCache.has(cacheKey)) {
+						const texture = textureCache.get(cacheKey);
+						if (!isPreload) {
+							texture.mapping = THREE.EquirectangularReflectionMapping;
+							texture.needsUpdate = true;
+							scene.background = texture;
+							scene.environment = texture;
+						}
+						return Promise.resolve(texture);
+					}
+
+					// Check if already loading
+					if (loadingTextures.has(cacheKey)) {
+						return new Promise((resolve) => {
+							const checkLoading = () => {
+								if (textureCache.has(cacheKey)) {
+									resolve(textureCache.get(cacheKey));
+								} else {
+									setTimeout(checkLoading, 100);
+								}
+							};
+							checkLoading();
+						});
+					}
+
+					// Start loading
+					loadingTextures.add(cacheKey);
 					loader.setDataType( THREE[ type ] );
 
-					loader.load( `textures/equirectangular/${imageName}`, function ( texture ) {
+					return new Promise((resolve, reject) => {
+						loader.load( `textures/equirectangular/${imageName}`, function ( texture ) {
+							texture.mapping = THREE.EquirectangularReflectionMapping;
+							texture.needsUpdate = true;
 
-						texture.mapping = THREE.EquirectangularReflectionMapping;
-						texture.needsUpdate = true;
+							// Cache the texture
+							textureCache.set(cacheKey, texture);
+							loadingTextures.delete(cacheKey);
 
-						scene.background = texture;
-						scene.environment = texture;
+							if (!isPreload) {
+								scene.background = texture;
+								scene.environment = texture;
+							}
 
-					} );
-
+							resolve(texture);
+						}, undefined, reject );
+					});
 				};
 
-				loadEnvironment( params.backgroundImage, params.type );
+				// Preload next texture immediately
+				const preloadNextTexture = function() {
+					// Use remaining scenes array when not using preloaded scenes
+					const textureArray = isUsingPreloadedScenes ? availableTextures : remainingScenes;
+					const nextTextureName = textureArray[nextTextureIndex];
+					if (nextTextureName && !textureCache.has(`${nextTextureName}_${params.type}`)) {
+						console.log(`Preloading: ${nextTextureName}`);
+						loadEnvironment(nextTextureName, params.type, true);
+					}
+				};
+
+				// Clear any scheduled preload tasks
+				const clearPreloadSchedule = function() {
+					if (preloadTimer) {
+						clearTimeout(preloadTimer);
+						preloadTimer = null;
+					}
+					if (preloadIdleId && window.cancelIdleCallback) {
+						cancelIdleCallback(preloadIdleId);
+						preloadIdleId = null;
+					}
+				};
+
+				// Schedule preloading mid-interval (~6s into the 10s cycle), using idle time
+				const scheduleMidIntervalPreload = function(delayMs = 6000) {
+					clearPreloadSchedule();
+					preloadTimer = setTimeout(() => {
+						if (window.requestIdleCallback) {
+							preloadIdleId = requestIdleCallback(() => {
+								preloadNextTexture();
+							});
+						} else {
+							// Fallback: small timeout to avoid beginning-of-cycle spikes
+							setTimeout(() => preloadNextTexture(), 0);
+						}
+					}, delayMs);
+				};
+
+				// Auto-rotate background function
+				const rotateBackground = function() {
+					if (!params.autoRotateBackground) return;
+
+					let currentTextureName;
+					let previousPreloadedTexture = null;
+					
+					// Check if we're using preloaded scenes
+					if (isUsingPreloadedScenes && preloadedScenesQueue.length > 0) {
+						// Store the previous preloaded texture to dispose it after loading the next one
+						if (params.backgroundImage && preloadedScenes.includes(params.backgroundImage)) {
+							previousPreloadedTexture = params.backgroundImage;
+						}
+						
+						// Use next preloaded scene
+						currentTextureName = preloadedScenesQueue.shift();
+						params.backgroundImage = currentTextureName;
+						
+						// If we've exhausted preloaded scenes, switch to remaining scenes
+						if (preloadedScenesQueue.length === 0) {
+							isUsingPreloadedScenes = false;
+							currentRotationInterval = 10000; // Switch to 10 seconds
+							
+							// Set up rotation to start with remaining scenes
+							currentTextureIndex = 0;
+							nextTextureIndex = 0;
+							
+							// Restart rotation with new interval
+							stopBackgroundRotation();
+							startBackgroundRotation();
+							
+							console.log('Switching to 10-second rotation intervals with remaining scenes');
+							console.log('Disposing all preloaded scenes...');
+						}
+					} else {
+						// Normal rotation through remaining textures (excluding preloaded ones)
+						currentTextureIndex = nextTextureIndex;
+						nextTextureIndex = (currentTextureIndex + 1) % remainingScenes.length;
+						currentTextureName = remainingScenes[currentTextureIndex];
+						params.backgroundImage = currentTextureName;
+					}
+
+					// Load current texture (should be instant if preloaded)
+					loadEnvironment(currentTextureName, params.type).then(() => {
+						// Update GUI to reflect current texture
+						gui.controllersRecursive().forEach(controller => {
+							if (controller.property === 'backgroundImage') {
+								controller.updateDisplay();
+							}
+						});
+						
+						// Dispose previous preloaded texture after the new one is loaded
+						if (previousPreloadedTexture) {
+							const previousCacheKey = `${previousPreloadedTexture}_${params.type}`;
+							if (textureCache.has(previousCacheKey)) {
+								const oldTexture = textureCache.get(previousCacheKey);
+								oldTexture.dispose();
+								textureCache.delete(previousCacheKey);
+								console.log(`Disposed preloaded scene: ${previousPreloadedTexture}`);
+							}
+						}
+						
+						// If we just finished all preloaded scenes, dispose the last one shown
+						if (!isUsingPreloadedScenes && preloadedScenesQueue.length === 0) {
+							const lastPreloadedTexture = params.backgroundImage;
+							if (preloadedScenes.includes(lastPreloadedTexture)) {
+								const lastCacheKey = `${lastPreloadedTexture}_${params.type}`;
+								if (textureCache.has(lastCacheKey)) {
+									const oldTexture = textureCache.get(lastCacheKey);
+									oldTexture.dispose();
+									textureCache.delete(lastCacheKey);
+									console.log(`Disposed final preloaded scene: ${lastPreloadedTexture}`);
+								}
+							}
+						}
+
+						// Only schedule mid-interval preload if not using preloaded scenes
+						if (!isUsingPreloadedScenes) {
+							// Schedule preloading mid-interval (6s into 10s cycle)
+							scheduleMidIntervalPreload(6000);
+							
+							// Clean up old cache (keep only current and next)
+							const previousIndex = (currentTextureIndex - 1 + remainingScenes.length) % remainingScenes.length;
+							const previousTextureName = remainingScenes[previousIndex];
+							const previousCacheKey = `${previousTextureName}_${params.type}`;
+							
+							if (textureCache.has(previousCacheKey)) {
+								const oldTexture = textureCache.get(previousCacheKey);
+								oldTexture.dispose();
+								textureCache.delete(previousCacheKey);
+								console.log(`Cleaned up cache for: ${previousTextureName}`);
+							}
+						}
+					});
+				};
+
+				// Start background rotation timer
+				const startBackgroundRotation = function() {
+					if (backgroundRotationTimer) {
+						clearInterval(backgroundRotationTimer);
+					}
+					
+					if (params.autoRotateBackground) {
+						backgroundRotationTimer = setInterval(rotateBackground, currentRotationInterval);
+						console.log(`Background rotation started - ${currentRotationInterval / 1000} second intervals`);
+					}
+				};
+
+				// Stop background rotation timer
+				const stopBackgroundRotation = function() {
+					if (backgroundRotationTimer) {
+						clearInterval(backgroundRotationTimer);
+						backgroundRotationTimer = null;
+						console.log('Background rotation stopped');
+					}
+				};
+
+				// Preload the 6 initial scenes
+				async function preloadInitialScenes() {
+					const loadingBar = document.getElementById('loading-bar');
+					const loadingText = document.getElementById('loading-text');
+					
+					// Calculate remaining scenes (all scenes except preloaded ones)
+					remainingScenes = availableTextures.filter(texture => !preloadedScenes.includes(texture));
+					console.log(`Preloaded scenes: ${preloadedScenes.length}, Remaining scenes: ${remainingScenes.length}`);
+					
+					for (let i = 0; i < preloadedScenes.length; i++) {
+						const sceneName = preloadedScenes[i];
+						loadingText.textContent = `Loading ${sceneName}...`;
+						
+						await loadEnvironment(sceneName, params.type, true);
+						
+						const progress = ((i + 1) / preloadedScenes.length) * 100;
+						loadingBar.style.width = `${progress}%`;
+					}
+					
+					loadingText.textContent = 'Ready!';
+					
+					// Wait a moment then fade out loading screen
+					setTimeout(() => {
+						const loadingScreen = document.getElementById('loading-screen');
+						loadingScreen.classList.add('fade-out');
+						
+						// Remove from DOM after fade
+						setTimeout(() => {
+							loadingScreen.remove();
+							
+							// Start with preloaded scenes
+							isUsingPreloadedScenes = true;
+							currentRotationInterval = 5000; // 5 seconds for preloaded
+							currentTextureIndex = 0;
+							nextTextureIndex = 1;
+							
+							// Load first preloaded scene
+							params.backgroundImage = preloadedScenes[0];
+							loadEnvironment(preloadedScenes[0], params.type).then(() => {
+								// Start rotation with 5-second intervals
+								startBackgroundRotation();
+							});
+						}, 500);
+					}, 500);
+				}
+
+				// Start preloading initial scenes
+				preloadInitialScenes();
 
 				const gui = new GUI();
 
 				gui.add( params, 'autoRotate' );
+				gui.add( params, 'autoRotateBackground' ).onChange( ( value ) => {
+					if (value) {
+						startBackgroundRotation();
+					} else {
+						stopBackgroundRotation();
+					}
+				});
 				gui.add( params, 'metalness', 0, 1, 0.01 );
 				gui.add( params, 'roughness', 0, 1, 0.01 );
 				gui.add( params, 'exposure', 0, 4, 0.01 );
 				gui.add( params, 'backgroundImage', availableTextures ).onChange( ( value ) => {
-
+					// Stop auto rotation when manually changing
+					stopBackgroundRotation();
+					// Cancel any pending mid-interval preload and reschedule
+					clearPreloadSchedule();
+					// Update current index to match selection
+					currentTextureIndex = availableTextures.indexOf(value);
+					nextTextureIndex = (currentTextureIndex + 1) % availableTextures.length;
+					
 					loadEnvironment( value, params.type );
-			
 				} );
 				gui.add( params, 'type', [ 'HalfFloatType', 'FloatType' ] ).onChange( ( value ) => {
-
+					// Clear cache when type changes
+					textureCache.forEach((texture, key) => {
+						texture.dispose();
+					});
+					textureCache.clear();
+					loadingTextures.clear();
+					
 					loadEnvironment( params.backgroundImage, value );
-			
 				} );
 
 				gui.open();
