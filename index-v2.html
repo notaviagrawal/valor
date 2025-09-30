@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Valor - Optimized 3D Showcase</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <link type="text/css" rel="stylesheet" href="main.css">
+</head>
+
+<body>
+
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div id="loading-content">
+            <h1 id="loading-title">valor</h1>
+            <div id="loading-bar-container">
+                <div id="loading-bar"></div>
+            </div>
+            <p id="loading-text">Initializing optimizations...</p>
+            <p id="loading-details" style="font-size: 0.8em; opacity: 0.7; margin-top: 10px;"></p>
+        </div>
+    </div>
+
+    <div id="info">
+        <h1>valor</h1>
+        <p id="stats" style="font-size: 0.9em; opacity: 0.8;"></p>
+    </div>
+
+    <script type="importmap">
+		{
+			"imports": {
+				"three": "./build/three.module.js",
+				"three/addons/": "./jsm/"
+			}
+		}
+	</script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { PMREMCache } from './pmrem-cache.js';
+        import { LODSelector } from './lod-selector.js';
+
+        // Register service worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js').then(reg => {
+                console.log('✅ Service Worker registered');
+            });
+        }
+
+        const params = {
+            autoRotate: true,
+            autoRotateBackground: true,
+            metalness: 1.0,
+            roughness: 0.0,
+            exposure: 1.0,
+            backgroundImage: 'alien-planet.jpg',
+        };
+
+        const availableTextures = [
+            "aerial-mountain.jpg", "alien-planet.jpg", "bridge.jpg",
+            "city-sunset.jpg", "cloudscape-sunset.jpg", "desert.jpg",
+            "earth-space.jpg", "foggy-morning.jpg", "hilly-terrain.jpg",
+            "pink-sunrise.jpg", "reflective-hall.jpg", "sci-fi-abstract.jpg",
+            "sci-fi-planet.jpg", "shanghai.jpg", "sunflowers.jpg",
+            "sunset-mountain.jpg", "sunset-ocean.jpg", "vaporwave.jpg"
+        ];
+
+        const preloadedScenes = [
+            "alien-planet.jpg", "desert.jpg", "sunflowers.jpg",
+            "foggy-morning.jpg", "sci-fi-abstract.jpg", "city-sunset.jpg"
+        ];
+
+        let renderer, scene, camera, controls, model, pivotGroup, gltfLoader;
+        let pmremCache, lodSelector;
+        let textureCache = new Map();
+        let loadingTextures = new Set();
+        let currentTextureIndex = 0;
+        let nextTextureIndex = 1;
+        let backgroundRotationTimer = null;
+        let currentEnvTexture = null;
+        let currentSceneInRotation = 0;
+        let remainingScenes = [];
+        let allScenesLoaded = false;
+        let textureWorker;
+
+        // Performance monitoring
+        let lastFrameTime = performance.now();
+        let frameCount = 0;
+        let fps = 60;
+
+        init();
+
+        async function init() {
+            // Setup renderer - OPTIMIZED for 60 FPS
+            renderer = new THREE.WebGLRenderer({
+                antialias: true,
+                powerPreference: "high-performance",
+                stencil: false, // Disable stencil buffer (not needed)
+                depth: true,
+                alpha: false // Opaque canvas
+            });
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Cap DPR at 2
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = params.exposure;
+            renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+            // Performance optimizations
+            renderer.info.autoReset = false; // Manual reset for better performance
+            renderer.shadowMap.enabled = false; // No shadows needed
+
+            scene = new THREE.Scene();
+
+            // Create pivot group FIRST (before animation loop starts)
+            pivotGroup = new THREE.Group();
+            scene.add(pivotGroup);
+
+            // NOW start the animation loop
+            renderer.setAnimationLoop(render);
+
+            // Initialize optimizations
+            lodSelector = new LODSelector(renderer);
+            pmremCache = new PMREMCache(renderer, 5, THREE);
+
+            document.getElementById('loading-details').textContent =
+                `Device: ${lodSelector.deviceTier.name} | Quality: ${lodSelector.deviceTier.quality}`;
+
+            // Initialize texture worker
+            textureWorker = new Worker('./texture-worker.js');
+            textureWorker.onmessage = handleWorkerMessage;
+
+            // Load GLTF model
+            gltfLoader = new GLTFLoader();
+            gltfLoader.load('valerlogo.gltf', function (gltf) {
+                model = gltf.scene;
+                model.traverse(function (child) {
+                    if (child.isMesh) {
+                        child.material = new THREE.MeshStandardMaterial({
+                            roughness: params.roughness,
+                            metalness: params.metalness
+                        });
+                    }
+                });
+
+                const boundingBox = new THREE.Box3().setFromObject(model);
+                const center = new THREE.Vector3();
+                boundingBox.getCenter(center);
+                model.position.sub(center);
+                model.scale.setScalar(50);
+
+                const scaledBoundingBox = new THREE.Box3().setFromObject(model);
+                const scaledCenter = new THREE.Vector3();
+                scaledBoundingBox.getCenter(scaledCenter);
+                model.position.sub(scaledCenter);
+
+                pivotGroup.position.set(0, 0, 0);
+                pivotGroup.add(model);
+                pivotGroup.rotation.x = -Math.PI / 2;
+                pivotGroup.rotation.y = 0;
+                pivotGroup.rotation.z = -Math.PI / 2;
+            });
+
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 500);
+            camera.position.set(0.0, 0.0, -6.0);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+
+            // Smart texture loading
+            const loadEnvironment = async function (imageName, isPreload = false) {
+                const cacheKey = imageName;
+
+                if (textureCache.has(cacheKey)) {
+                    const { texture, envMap } = textureCache.get(cacheKey);
+                    if (!isPreload) {
+                        scene.background = texture;
+                        scene.environment = envMap;
+                    }
+                    return { texture, envMap };
+                }
+
+                if (loadingTextures.has(cacheKey)) {
+                    return new Promise((resolve) => {
+                        const checkLoading = () => {
+                            if (textureCache.has(cacheKey)) {
+                                resolve(textureCache.get(cacheKey));
+                            } else {
+                                setTimeout(checkLoading, 100);
+                            }
+                        };
+                        checkLoading();
+                    });
+                }
+
+                loadingTextures.add(cacheKey);
+                const basename = imageName.replace(/\.(jpg|jpeg|png)$/i, '');
+                const texturePath = lodSelector.getTextureUrl(basename);
+
+                return new Promise((resolve) => {
+                    const textureLoader = new THREE.TextureLoader();
+                    textureLoader.load(texturePath, function (texture) {
+                        texture.mapping = THREE.EquirectangularReflectionMapping;
+                        texture.colorSpace = THREE.SRGBColorSpace;
+
+                        // Generate PMREM environment map with cache
+                        const envMap = pmremCache.get(texture, cacheKey);
+
+                        textureCache.set(cacheKey, { texture, envMap });
+                        loadingTextures.delete(cacheKey);
+
+                        if (!isPreload) {
+                            scene.background = texture;
+                            scene.environment = envMap;
+                        }
+
+                        resolve({ texture, envMap });
+                    });
+                });
+            };
+
+            // Instant texture swap - NO crossfade to prevent frame drops
+            const crossfadeToTexture = async function (imageName) {
+                const { texture, envMap } = await loadEnvironment(imageName, false);
+                currentEnvTexture = texture;
+                // Direct assignment - instant, no animation to cause drops
+                scene.background = texture;
+                scene.environment = envMap;
+            };
+
+            // Auto-rotate backgrounds
+            const rotateBackground = function () {
+                if (!params.autoRotateBackground) return;
+
+                currentTextureIndex = nextTextureIndex;
+                nextTextureIndex = (currentTextureIndex + 1) % availableTextures.length;
+                const currentTextureName = availableTextures[currentTextureIndex];
+                params.backgroundImage = currentTextureName;
+                currentSceneInRotation++;
+
+                if (currentSceneInRotation === 6 && !allScenesLoaded) {
+                    setTimeout(() => loadRemainingScenes(), 2500);
+                }
+
+                crossfadeToTexture(currentTextureName).then(() => {
+                    gui.controllersRecursive().forEach(controller => {
+                        if (controller.property === 'backgroundImage') {
+                            controller.updateDisplay();
+                        }
+                    });
+                });
+            };
+
+            const startBackgroundRotation = function () {
+                if (backgroundRotationTimer) clearInterval(backgroundRotationTimer);
+                if (params.autoRotateBackground) {
+                    backgroundRotationTimer = setInterval(rotateBackground, 5000);
+                    console.log('🎬 Background rotation: 5s intervals');
+                }
+            };
+
+            const stopBackgroundRotation = function () {
+                if (backgroundRotationTimer) {
+                    clearInterval(backgroundRotationTimer);
+                    backgroundRotationTimer = null;
+                }
+            };
+
+            // Preload initial scenes
+            async function preloadInitialScenes() {
+                const loadingBar = document.getElementById('loading-bar');
+                const loadingText = document.getElementById('loading-text');
+
+                remainingScenes = availableTextures.filter(t => !preloadedScenes.includes(t));
+                console.log(`🎬 Preloading ${preloadedScenes.length} scenes...`);
+
+                for (let i = 0; i < preloadedScenes.length; i++) {
+                    const sceneName = preloadedScenes[i];
+                    loadingText.textContent = `Loading ${sceneName}...`;
+                    await loadEnvironment(sceneName, true);
+                    const progress = ((i + 1) / preloadedScenes.length) * 100;
+                    loadingBar.style.width = `${progress}%`;
+                }
+
+                loadingText.textContent = 'Ready!';
+                console.log(`✅ ${preloadedScenes.length} scenes ready!`);
+
+                setTimeout(() => {
+                    document.getElementById('loading-screen').classList.add('fade-out');
+                    setTimeout(() => {
+                        document.getElementById('loading-screen').remove();
+                        currentTextureIndex = 0;
+                        nextTextureIndex = 1;
+                        currentSceneInRotation = 1;
+                        crossfadeToTexture(availableTextures[0]).then(() => {
+                            startBackgroundRotation();
+                        });
+                    }, 500);
+                }, 500);
+            }
+
+            // Background load remaining scenes
+            async function loadRemainingScenes() {
+                if (allScenesLoaded) return;
+                console.log(`🔄 Loading ${remainingScenes.length} scenes in background...`);
+                for (let i = 0; i < remainingScenes.length; i++) {
+                    loadEnvironment(remainingScenes[i], true);
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                allScenesLoaded = true;
+                console.log(`✅ All ${availableTextures.length} scenes loaded!`);
+            }
+
+            // Handle worker messages
+            function handleWorkerMessage(e) {
+                if (e.data.type === 'decoded') {
+                    console.log(`🖼️ Worker decoded texture: ${e.data.id}`);
+                }
+            }
+
+            // Start preloading
+            preloadInitialScenes();
+
+            // GUI
+            const gui = new GUI();
+            gui.add(params, 'autoRotate');
+            gui.add(params, 'autoRotateBackground').onChange((value) => {
+                value ? startBackgroundRotation() : stopBackgroundRotation();
+            });
+            gui.add(params, 'metalness', 0, 1, 0.01);
+            gui.add(params, 'roughness', 0, 1, 0.01);
+            gui.add(params, 'exposure', 0, 4, 0.01);
+            gui.add(params, 'backgroundImage', availableTextures).onChange((value) => {
+                stopBackgroundRotation();
+                currentTextureIndex = availableTextures.indexOf(value);
+                nextTextureIndex = (currentTextureIndex + 1) % availableTextures.length;
+                crossfadeToTexture(value);
+            });
+
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function render() {
+            // Update model materials ONLY when changed (not every frame)
+            if (model && (params.roughness !== model.userData.lastRoughness || params.metalness !== model.userData.lastMetalness)) {
+                model.traverse(function (child) {
+                    if (child.isMesh) {
+                        child.material.roughness = params.roughness;
+                        child.material.metalness = params.metalness;
+                    }
+                });
+                model.userData.lastRoughness = params.roughness;
+                model.userData.lastMetalness = params.metalness;
+            }
+
+            if (params.autoRotate && pivotGroup) {
+                pivotGroup.rotation.z += 0.005;
+            }
+
+            // Update exposure only when changed
+            if (renderer.toneMappingExposure !== params.exposure) {
+                renderer.toneMappingExposure = params.exposure;
+            }
+
+            if (controls) {
+                controls.update();
+            }
+
+            // FPS monitoring (update less frequently)
+            frameCount++;
+            const now = performance.now();
+            if (now - lastFrameTime >= 2000) { // Update every 2s instead of 1s
+                fps = Math.round((frameCount * 1000) / (now - lastFrameTime));
+                const stats = document.getElementById('stats');
+                if (stats) {
+                    const memoryInfo = performance.memory ?
+                        `GPU Memory: ~${Math.round(performance.memory.usedJSHeapSize / 1024 / 1024)}MB | ` : '';
+                    stats.textContent = `${memoryInfo}FPS: ${fps} | Quality: ${lodSelector.deviceTier.quality}`;
+                }
+                frameCount = 0;
+                lastFrameTime = now;
+                renderer.info.reset(); // Reset manually
+            }
+
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+
+</html>

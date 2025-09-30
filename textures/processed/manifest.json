@@ -1,0 +1,817 @@
+{
+  "version": "1.0.0",
+  "buildType": "simple",
+  "generated": "2025-09-30T21:24:44.315Z",
+  "textures": {
+    "aerial-mountain": {
+      "original": "aerial-mountain.jpg",
+      "variants": {
+        "medium": {
+          "path": "textures/processed/medium/aerial-mountain.webp",
+          "width": 2048,
+          "height": 1024,
+          "size": 182782,
+          "sizeMB": "0.17",
+          "format": "webp"
+        },
+        "high-mid": {
+          "path": "textures/processed/high-mid/aerial-mountain.jpg",
+          "width": 4096,
+          "height": 2048,
+          "size": 1966446,
+          "sizeMB": "1.88",
+          "format": "jpeg"
+        },
+        "very-high": {
+          "path": "textures/processed/very-high/aerial-mountain.jpg",
+          "width": 6144,
+          "height": 3072,
+          "size": 6644387,
+          "sizeMB": "6.34",
+          "format": "jpeg"
+        },
+        "ultra": {
+          "path": "textures/processed/ultra/aerial-mountain.jpg",
+          "width": 8192,
+          "height": 4096,
+          "size": 16130184,
+          "sizeMB": "15.38",
+          "format": "jpeg"
+        },
+        "max": {
+          "path": "textures/processed/max/aerial-mountain.jpg",
+          "width": 10240,
+          "height": 5120,
+          "size": 22766198,
+          "sizeMB": "21.71",
+          "format": "jpeg"
+        }
+      }
+    },
+    "alien-planet": {
+      "original": "alien-planet.jpg",
+      "variants": {
+        "medium": {
+          "path": "textures/processed/medium/alien-planet.webp",
+          "width": 2048,
+          "height": 1024,
+          "size": 147418,
+          "sizeMB": "0.14",
+          "format": "webp"
+        },
+        "high-mid": {
+          "path": "textures/processed/high-mid/alien-planet.jpg",
+          "width": 4096,
+          "height": 2048,
+          "size": 1499343,
+          "sizeMB": "1.43",
+          "format": "jpeg"
+        },
+        "very-high": {
+          "path": "textures/processed/very-high/alien-planet.jpg",
+          "width": 6144,
+          "height": 3072,
+          "size": 4813952,
+          "sizeMB": "4.59",
+          "format": "jpeg"
+        },
+        "ultra": {
+          "path": "textures/processed/ultra/alien-planet.jpg",
+          "width": 8192,
+          "height": 4096,
+          "size": 11216368,
+          "sizeMB": "10.70",
+          "format": "jpeg"
+        },
+        "max": {
+          "path": "textures/processed/max/alien-planet.jpg",
+          "width": 10240,
+          "height": 5120,
+          "size": 16416300,
+          "sizeMB": "15.66",
+          "format": "jpeg"
+        }
+      }
+    },
+    "bridge": {
+      "original": "bridge.jpg",
+      "variants": {
+        "medium": {
+          "path": "textures/processed/medium/bridge.webp",
+          "width": 2048,
+          "height": 1024,
+          "size": 229362,
+          "sizeMB": "0.22",
+          "format": "webp"
+        },
+        "high-mid": {
+          "path": "textures/processed/high-mid/bridge.jpg",
+          "width": 4096,
+          "height": 2048,
+          "size": 2181379,
+          "sizeMB": "2.08",
+          "format": "jpeg"
+        },
+        "very-high": {
+          "path": "textures/processed/very-high/bridge.jpg",
+          "width": 6144,
+          "height": 3072,
+          "size": 6683282,
+          "sizeMB": "6.37",
+          "format": "jpeg"
+        },
+        "ultra": {
+          "path": "textures/processed/ultra/bridge.jpg",
+          "width": 8192,
+          "height": 4096,
+          "size": 16077022,
+          "sizeMB": "15.33",
+          "format": "jpeg"
+        },
+        "max": {
+          "path": "textures/processed/max/bridge.jpg",
+          "width": 10240,
+          "height": 5120,
+          "size": 23445742,
+          "sizeMB": "22.36",
+          "format": "jpeg"
+        }
+      }
+    },
+    "city-sunset": {
+      "original": "city-sunset.jpg",
+      "variants": {
+        "medium": {
+          "path": "textures/processed/medium/city-sunset.webp",
+          "width": 2048,
+          "height": 1024,
+          "size": 273662,
+          "sizeMB": "0.26",
+          "format": "webp"
+        },
+        "high-mid": {
+          "path": "textures/processed/high-mid/city-sunset.jpg",
+          "width": 4096,
+          "height": 2048,
+          "size": 2509456,
+          "sizeMB": "2.39",
+          "format": "jpeg"
+        },
+        "very-high": {
+          "path": "textures/processed/very-high/city-sunset.jpg",
+          "width": 6144,
+          "height": 3072,
+          "size": 6474834,
+          "sizeMB": "6.17",
+          "format": "jpeg"
+        },
+        "ultra": {
+          "path": "textures/processed/ultra/city-sunset.jpg",
+          "width": 8192,
+          "height": 4096,
+          "size": 14327648,
+          "sizeMB": "13.66",
+          "format": "jpeg"
+        },
+        "max": {
+          "path": "textures/processed/max/city-sunset.jpg",
+          "width": 10240,
+          "height": 5120,
+          "size": 19773733,
+          "sizeMB": "18.86",
+          "format": "jpeg"
+        }
+      }
+    },
+    "cloudscape-sunset": {
+      "original": "cloudscape-sunset.jpg",
+      "variants": {
+        "medium": {
+          "path": "textures/processed/medium/cloudscape-sunset.webp",
+          "width": 2048,
+          "height": 1024,
+          "size": 66110,
+          "sizeMB": "0.06",
+          "format": "webp"
+        },
+        "high-mid": {
+          "path": "textures/processed/high-mid/cloudscape-sunset.jpg",
+          "width": 4096,
+          "height": 2048,
+          "size": 1362896,
+          "sizeMB": "1.30",
+          "format": "jpeg"
+        },
+        "very-high": {
+          "path": "textures/processed/very-high/cloudscape-sunset.jpg",
+          "width": 6144,
+          "height": 3072,
+          "size": 5327356,
+          "sizeMB": "5.08",
+          "format": "jpeg"
+        },
+        "ultra": {
+          "path": "textures/processed/ultra/cloudscape-sunset.jpg",
+          "width": 8192,
+          "height": 4096,
+          "size": 13829633,
+          "sizeMB": "13.19",
+          "format": "jpeg"
+        },
+        "max": {
+          "path": "textures/processed/max/cloudscape-sunset.jpg",
+          "width": 10240,
+          "height": 5120,
+          "size": 19516544,
+          "sizeMB": "18.61",
+          "format": "jpeg"
+        }
+      }
+    },
+    "desert": {
+      "original": "desert.jpg",
+      "variants": {
+        "medium": {
+          "path": "textures/processed/medium/desert.webp",
+          "width": 2048,
+          "height": 1024,
+          "size": 114638,
+          "sizeMB": "0.11",
+          "format": "webp"
+        },
+        "high-mid": {
+          "path": "textures/processed/high-mid/desert.jpg",
+          "width": 4096,
+          "height": 2048,
+          "size": 1411354,
+          "sizeMB": "1.35",
+          "format": "jpeg"
+        },
+        "very-high": {
+          "path": "textures/processed/very-high/desert.jpg",
+          "width": 6144,
+          "height": 3072,
+          "size": 4441134,
+          "sizeMB": "4.24",
+          "format": "jpeg"
+        },
+        "ultra": {
+          "path": "textures/processed/ultra/desert.jpg",
+          "width": 8192,
+          "height": 4096,
+          "size": 11146928,
+          "sizeMB": "10.63",
+          "format": "jpeg"
+        },
+        "max": {
+          "path": "textures/processed/max/desert.jpg",
+          "width": 10240,
+          "height": 5120,
+          "size": 15594004,
+          "sizeMB": "14.87",
+          "format": "jpeg"
+        }
+      }
+    },
+    "earth-space": {
+      "original": "earth-space.jpg",
+      "variants": {
+        "medium": {
+          "path": "textures/processed/medium/earth-space.webp",
+          "width": 2048,
+          "height": 1024,
+          "size": 32254,
+          "sizeMB": "0.03",
+          "format": "webp"
+        },
+        "high-mid": {
+          "path": "textures/processed/high-mid/earth-space.jpg",
+          "width": 4096,
+          "height": 2048,
+          "size": 460561,
+          "sizeMB": "0.44",
+          "format": "jpeg"
+        },
+        "very-high": {
+          "path": "textures/processed/very-high/earth-space.jpg",
+          "width": 6144,
+          "height": 3072,
+          "size": 1270756,
+          "sizeMB": "1.21",
+          "format": "jpeg"
+        },
+        "ultra": {
+          "path": "textures/processed/ultra/earth-space.jpg",
+          "width": 8192,
+          "height": 4096,
+          "size": 2897821,
+          "sizeMB": "2.76",
+          "format": "jpeg"
+        },
+        "max": {
+          "path": "textures/processed/max/earth-space.jpg",
+          "width": 10240,
+          "height": 5120,
+          "size": 3923683,
+          "sizeMB": "3.74",
+          "format": "jpeg"
+        }
+      }
+    },
+    "foggy-morning": {
+      "original": "foggy-morning.jpg",
+      "variants": {
+        "medium": {
+          "path": "textures/processed/medium/foggy-morning.webp",
+          "width": 2048,
+          "height": 1024,
+          "size": 147182,
+          "sizeMB": "0.14",
+          "format": "webp"
+        },
+        "high-mid": {
+          "path": "textures/processed/high-mid/foggy-morning.jpg",
+          "width": 4096,
+          "height": 2048,
+          "size": 1618678,
+          "sizeMB": "1.54",
+          "format": "jpeg"
+        },
+        "very-high": {
+          "path": "textures/processed/very-high/foggy-morning.jpg",
+          "width": 6144,
+          "height": 3072,
+          "size": 4521147,
+          "sizeMB": "4.31",
+          "format": "jpeg"
+        },
+        "ultra": {
+          "path": "textures/processed/ultra/foggy-morning.jpg",
+          "width": 8192,
+          "height": 4096,
+          "size": 11207820,
+          "sizeMB": "10.69",
+          "format": "jpeg"
+        },
+        "max": {
+          "path": "textures/processed/max/foggy-morning.jpg",
+          "width": 10240,
+          "height": 5120,
+          "size": 15659338,
+          "sizeMB": "14.93",
+          "format": "jpeg"
+        }
+      }
+    },
+    "hilly-terrain": {
+      "original": "hilly-terrain.jpg",
+      "variants": {
+        "medium": {
+          "path": "textures/processed/medium/hilly-terrain.webp",
+          "width": 2048,
+          "height": 1024,
+          "size": 236440,
+          "sizeMB": "0.23",
+          "format": "webp"
+        },
+        "high-mid": {
+          "path": "textures/processed/high-mid/hilly-terrain.jpg",
+          "width": 4096,
+          "height": 2048,
+          "size": 2209211,
+          "sizeMB": "2.11",
+          "format": "jpeg"
+        },
+        "very-high": {
+          "path": "textures/processed/very-high/hilly-terrain.jpg",
+          "width": 6144,
+          "height": 3072,
+          "size": 6974315,
+          "sizeMB": "6.65",
+          "format": "jpeg"
+        },
+        "ultra": {
+          "path": "textures/processed/ultra/hilly-terrain.jpg",
+          "width": 8192,
+          "height": 4096,
+          "size": 16902815,
+          "sizeMB": "16.12",
+          "format": "jpeg"
+        },
+        "max": {
+          "path": "textures/processed/max/hilly-terrain.jpg",
+          "width": 10240,
+          "height": 5120,
+          "size": 24863399,
+          "sizeMB": "23.71",
+          "format": "jpeg"
+        }
+      }
+    },
+    "pink-sunrise": {
+      "original": "pink-sunrise.jpg",
+      "variants": {
+        "medium": {
+          "path": "textures/processed/medium/pink-sunrise.webp",
+          "width": 2048,
+          "height": 1024,
+          "size": 42188,
+          "sizeMB": "0.04",
+          "format": "webp"
+        },
+        "high-mid": {
+          "path": "textures/processed/high-mid/pink-sunrise.jpg",
+          "width": 4096,
+          "height": 2048,
+          "size": 833403,
+          "sizeMB": "0.79",
+          "format": "jpeg"
+        },
+        "very-high": {
+          "path": "textures/processed/very-high/pink-sunrise.jpg",
+          "width": 6144,
+          "height": 3072,
+          "size": 3144328,
+          "sizeMB": "3.00",
+          "format": "jpeg"
+        },
+        "ultra": {
+          "path": "textures/processed/ultra/pink-sunrise.jpg",
+          "width": 8192,
+          "height": 4096,
+          "size": 8608795,
+          "sizeMB": "8.21",
+          "format": "jpeg"
+        },
+        "max": {
+          "path": "textures/processed/max/pink-sunrise.jpg",
+          "width": 10240,
+          "height": 5120,
+          "size": 12239248,
+          "sizeMB": "11.67",
+          "format": "jpeg"
+        }
+      }
+    },
+    "reflective-hall": {
+      "original": "reflective-hall.jpg",
+      "variants": {
+        "medium": {
+          "path": "textures/processed/medium/reflective-hall.webp",
+          "width": 2048,
+          "height": 1024,
+          "size": 74752,
+          "sizeMB": "0.07",
+          "format": "webp"
+        },
+        "high-mid": {
+          "path": "textures/processed/high-mid/reflective-hall.jpg",
+          "width": 4096,
+          "height": 2048,
+          "size": 828268,
+          "sizeMB": "0.79",
+          "format": "jpeg"
+        },
+        "very-high": {
+          "path": "textures/processed/very-high/reflective-hall.jpg",
+          "width": 6144,
+          "height": 3072,
+          "size": 2116048,
+          "sizeMB": "2.02",
+          "format": "jpeg"
+        },
+        "ultra": {
+          "path": "textures/processed/ultra/reflective-hall.jpg",
+          "width": 8192,
+          "height": 4096,
+          "size": 4553015,
+          "sizeMB": "4.34",
+          "format": "jpeg"
+        },
+        "max": {
+          "path": "textures/processed/max/reflective-hall.jpg",
+          "width": 10240,
+          "height": 5120,
+          "size": 6219536,
+          "sizeMB": "5.93",
+          "format": "jpeg"
+        }
+      }
+    },
+    "sci-fi-abstract": {
+      "original": "sci-fi-abstract.jpg",
+      "variants": {
+        "medium": {
+          "path": "textures/processed/medium/sci-fi-abstract.webp",
+          "width": 2048,
+          "height": 1024,
+          "size": 236620,
+          "sizeMB": "0.23",
+          "format": "webp"
+        },
+        "high-mid": {
+          "path": "textures/processed/high-mid/sci-fi-abstract.jpg",
+          "width": 4096,
+          "height": 2048,
+          "size": 1741517,
+          "sizeMB": "1.66",
+          "format": "jpeg"
+        },
+        "very-high": {
+          "path": "textures/processed/very-high/sci-fi-abstract.jpg",
+          "width": 6144,
+          "height": 3072,
+          "size": 4550793,
+          "sizeMB": "4.34",
+          "format": "jpeg"
+        },
+        "ultra": {
+          "path": "textures/processed/ultra/sci-fi-abstract.jpg",
+          "width": 8192,
+          "height": 4096,
+          "size": 10658898,
+          "sizeMB": "10.17",
+          "format": "jpeg"
+        },
+        "max": {
+          "path": "textures/processed/max/sci-fi-abstract.jpg",
+          "width": 10240,
+          "height": 5120,
+          "size": 14482747,
+          "sizeMB": "13.81",
+          "format": "jpeg"
+        }
+      }
+    },
+    "sci-fi-planet": {
+      "original": "sci-fi-planet.jpg",
+      "variants": {
+        "medium": {
+          "path": "textures/processed/medium/sci-fi-planet.webp",
+          "width": 2048,
+          "height": 1024,
+          "size": 82450,
+          "sizeMB": "0.08",
+          "format": "webp"
+        },
+        "high-mid": {
+          "path": "textures/processed/high-mid/sci-fi-planet.jpg",
+          "width": 4096,
+          "height": 2048,
+          "size": 1060452,
+          "sizeMB": "1.01",
+          "format": "jpeg"
+        },
+        "very-high": {
+          "path": "textures/processed/very-high/sci-fi-planet.jpg",
+          "width": 6144,
+          "height": 3072,
+          "size": 3736030,
+          "sizeMB": "3.56",
+          "format": "jpeg"
+        },
+        "ultra": {
+          "path": "textures/processed/ultra/sci-fi-planet.jpg",
+          "width": 8192,
+          "height": 4096,
+          "size": 8980051,
+          "sizeMB": "8.56",
+          "format": "jpeg"
+        },
+        "max": {
+          "path": "textures/processed/max/sci-fi-planet.jpg",
+          "width": 10240,
+          "height": 5120,
+          "size": 12604464,
+          "sizeMB": "12.02",
+          "format": "jpeg"
+        }
+      }
+    },
+    "shanghai": {
+      "original": "shanghai.jpg",
+      "variants": {
+        "medium": {
+          "path": "textures/processed/medium/shanghai.webp",
+          "width": 2048,
+          "height": 1024,
+          "size": 194762,
+          "sizeMB": "0.19",
+          "format": "webp"
+        },
+        "high-mid": {
+          "path": "textures/processed/high-mid/shanghai.jpg",
+          "width": 4096,
+          "height": 2048,
+          "size": 1968225,
+          "sizeMB": "1.88",
+          "format": "jpeg"
+        },
+        "very-high": {
+          "path": "textures/processed/very-high/shanghai.jpg",
+          "width": 6144,
+          "height": 3072,
+          "size": 6217498,
+          "sizeMB": "5.93",
+          "format": "jpeg"
+        },
+        "ultra": {
+          "path": "textures/processed/ultra/shanghai.jpg",
+          "width": 8192,
+          "height": 4096,
+          "size": 15391889,
+          "sizeMB": "14.68",
+          "format": "jpeg"
+        },
+        "max": {
+          "path": "textures/processed/max/shanghai.jpg",
+          "width": 10240,
+          "height": 5120,
+          "size": 23319585,
+          "sizeMB": "22.24",
+          "format": "jpeg"
+        }
+      }
+    },
+    "sunflowers": {
+      "original": "sunflowers.jpg",
+      "variants": {
+        "medium": {
+          "path": "textures/processed/medium/sunflowers.webp",
+          "width": 2048,
+          "height": 1024,
+          "size": 68776,
+          "sizeMB": "0.07",
+          "format": "webp"
+        },
+        "high-mid": {
+          "path": "textures/processed/high-mid/sunflowers.jpg",
+          "width": 4096,
+          "height": 2048,
+          "size": 892801,
+          "sizeMB": "0.85",
+          "format": "jpeg"
+        },
+        "very-high": {
+          "path": "textures/processed/very-high/sunflowers.jpg",
+          "width": 6144,
+          "height": 3072,
+          "size": 2751237,
+          "sizeMB": "2.62",
+          "format": "jpeg"
+        },
+        "ultra": {
+          "path": "textures/processed/ultra/sunflowers.jpg",
+          "width": 8192,
+          "height": 4096,
+          "size": 6677581,
+          "sizeMB": "6.37",
+          "format": "jpeg"
+        },
+        "max": {
+          "path": "textures/processed/max/sunflowers.jpg",
+          "width": 10240,
+          "height": 5120,
+          "size": 10498003,
+          "sizeMB": "10.01",
+          "format": "jpeg"
+        }
+      }
+    },
+    "sunset-mountain": {
+      "original": "sunset-mountain.jpg",
+      "variants": {
+        "medium": {
+          "path": "textures/processed/medium/sunset-mountain.webp",
+          "width": 2048,
+          "height": 1024,
+          "size": 102116,
+          "sizeMB": "0.10",
+          "format": "webp"
+        },
+        "high-mid": {
+          "path": "textures/processed/high-mid/sunset-mountain.jpg",
+          "width": 4096,
+          "height": 2048,
+          "size": 1324494,
+          "sizeMB": "1.26",
+          "format": "jpeg"
+        },
+        "very-high": {
+          "path": "textures/processed/very-high/sunset-mountain.jpg",
+          "width": 6144,
+          "height": 3072,
+          "size": 4807218,
+          "sizeMB": "4.58",
+          "format": "jpeg"
+        },
+        "ultra": {
+          "path": "textures/processed/ultra/sunset-mountain.jpg",
+          "width": 8192,
+          "height": 4096,
+          "size": 12606350,
+          "sizeMB": "12.02",
+          "format": "jpeg"
+        },
+        "max": {
+          "path": "textures/processed/max/sunset-mountain.jpg",
+          "width": 10240,
+          "height": 5120,
+          "size": 18442138,
+          "sizeMB": "17.59",
+          "format": "jpeg"
+        }
+      }
+    },
+    "sunset-ocean": {
+      "original": "sunset-ocean.jpg",
+      "variants": {
+        "medium": {
+          "path": "textures/processed/medium/sunset-ocean.webp",
+          "width": 2048,
+          "height": 1024,
+          "size": 35106,
+          "sizeMB": "0.03",
+          "format": "webp"
+        },
+        "high-mid": {
+          "path": "textures/processed/high-mid/sunset-ocean.jpg",
+          "width": 4096,
+          "height": 2048,
+          "size": 728479,
+          "sizeMB": "0.69",
+          "format": "jpeg"
+        },
+        "very-high": {
+          "path": "textures/processed/very-high/sunset-ocean.jpg",
+          "width": 6144,
+          "height": 3072,
+          "size": 2904720,
+          "sizeMB": "2.77",
+          "format": "jpeg"
+        },
+        "ultra": {
+          "path": "textures/processed/ultra/sunset-ocean.jpg",
+          "width": 8192,
+          "height": 4096,
+          "size": 8270963,
+          "sizeMB": "7.89",
+          "format": "jpeg"
+        },
+        "max": {
+          "path": "textures/processed/max/sunset-ocean.jpg",
+          "width": 10240,
+          "height": 5120,
+          "size": 11820935,
+          "sizeMB": "11.27",
+          "format": "jpeg"
+        }
+      }
+    },
+    "vaporwave": {
+      "original": "vaporwave.jpg",
+      "variants": {
+        "medium": {
+          "path": "textures/processed/medium/vaporwave.webp",
+          "width": 2048,
+          "height": 1024,
+          "size": 101886,
+          "sizeMB": "0.10",
+          "format": "webp"
+        },
+        "high-mid": {
+          "path": "textures/processed/high-mid/vaporwave.jpg",
+          "width": 4096,
+          "height": 2048,
+          "size": 906008,
+          "sizeMB": "0.86",
+          "format": "jpeg"
+        },
+        "very-high": {
+          "path": "textures/processed/very-high/vaporwave.jpg",
+          "width": 6144,
+          "height": 3072,
+          "size": 2398003,
+          "sizeMB": "2.29",
+          "format": "jpeg"
+        },
+        "ultra": {
+          "path": "textures/processed/ultra/vaporwave.jpg",
+          "width": 8192,
+          "height": 4096,
+          "size": 5734631,
+          "sizeMB": "5.47",
+          "format": "jpeg"
+        },
+        "max": {
+          "path": "textures/processed/max/vaporwave.jpg",
+          "width": 10240,
+          "height": 5120,
+          "size": 7954786,
+          "sizeMB": "7.59",
+          "format": "jpeg"
+        }
+      }
+    }
+  }
+}

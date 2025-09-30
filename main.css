@@ -25,6 +25,10 @@
 	pointer-events: none;
 }
 
+#loading-screen.no-scroll {
+	overflow: hidden;
+}
+
 #loading-content {
 	text-align: center;
 }
@@ -64,6 +68,54 @@
 	letter-spacing: 1px;
 }
 
+/* Quality Selector */
+#quality-selector {
+	margin-top: 40px;
+	text-align: center;
+}
+
+#quality-selector label {
+	font-family: "Electromagnetic Lungs", "Helvetica Neue", Helvetica, Arial, sans-serif;
+	font-size: 1.2rem;
+	color: #ffffff;
+	display: block;
+	margin-bottom: 15px;
+	letter-spacing: 2px;
+	text-transform: uppercase;
+}
+
+#quality-select {
+	font-family: "Electromagnetic Lungs", "Helvetica Neue", Helvetica, Arial, sans-serif;
+	font-size: 1.1rem;
+	padding: 12px 24px;
+	background: rgba(255, 255, 255, 0.05);
+	color: #ffffff;
+	border: 2px solid rgba(255, 255, 255, 0.2);
+	border-radius: 0;
+	cursor: pointer;
+	transition: all 0.3s ease;
+	letter-spacing: 1px;
+	min-width: 200px;
+}
+
+#quality-select:hover {
+	background: rgba(255, 255, 255, 0.1);
+	border-color: rgba(255, 255, 255, 0.4);
+}
+
+#quality-select:focus {
+	outline: none;
+	border-color: rgba(255, 255, 255, 0.6);
+	background: rgba(255, 255, 255, 0.1);
+}
+
+#quality-select option {
+	background: #000000;
+	color: #ffffff;
+	font-family: "Electromagnetic Lungs", "Helvetica Neue", Helvetica, Arial, sans-serif;
+	padding: 10px;
+}
+
 body {
 	margin: 0;
 	background-color: #000;
@@ -72,6 +124,15 @@ body {
 	font-size: 13px;
 	line-height: 24px;
 	overscroll-behavior: none;
+	height: 100vh;
+	position: relative;
+	overflow: hidden;
+	/* Prevent default scrolling */
+}
+
+body.no-scroll {
+	overflow: hidden;
+	height: 100vh;
 }
 
 a {
@@ -101,7 +162,8 @@ button {
 	-ms-user-select: none;
 	user-select: none;
 	pointer-events: none;
-	z-index: 1; /* TODO Solve this in HTML */
+	z-index: 1;
+	/* TODO Solve this in HTML */
 }
 
 #info h1 {
@@ -115,16 +177,20 @@ button {
 	letter-spacing: 2px !important;
 }
 
-a, button, input, select {
+a,
+button,
+input,
+select {
 	pointer-events: auto;
 }
 
 .lil-gui {
-	z-index: 2 !important; /* TODO Solve this in HTML */
+	z-index: 2 !important;
+	/* TODO Solve this in HTML */
 }
 
-@media all and ( max-width: 640px ) {
-	.lil-gui.root { 
+@media all and (max-width: 640px) {
+	.lil-gui.root {
 		right: auto;
 		top: auto;
 		max-height: 50%;
@@ -146,19 +212,19 @@ a, button, input, select {
 	align-items: center;
 	justify-content: center;
 	flex-direction: column;
-	background: rgba(0,0,0,0.7);
+	background: rgba(0, 0, 0, 0.7);
 }
 
-	#overlay button {
-		background: transparent;
-		border: 0;
-		border: 1px solid rgb(255, 255, 255);
-		border-radius: 4px;
-		color: #ffffff;
-		padding: 12px 18px;
-		text-transform: uppercase;
-		cursor: pointer;
-	}
+#overlay button {
+	background: transparent;
+	border: 0;
+	border: 1px solid rgb(255, 255, 255);
+	border-radius: 4px;
+	color: #ffffff;
+	padding: 12px 18px;
+	text-transform: uppercase;
+	cursor: pointer;
+}
 
 #notSupported {
 	width: 50%;
@@ -166,4 +232,45 @@ a, button, input, select {
 	background-color: #f00;
 	margin-top: 20px;
 	padding: 10px;
+}
+
+/* Text Section */
+#text-section {
+	position: fixed;
+	top: 100vh;
+	left: 0;
+	width: 100%;
+	height: 100vh;
+	background-color: #ffffff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 10;
+	transition: top 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#text-section.visible {
+	top: 0;
+}
+
+#text-section p {
+	font-family: "Electromagnetic Lungs", "Helvetica Neue", Helvetica, Arial, sans-serif;
+	font-size: 3rem;
+	color: #000000;
+	text-align: center;
+	margin: 0;
+	padding: 0 40px;
+	line-height: 1.4;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+}
+
+#world-logo {
+	height: 3rem;
+	width: auto;
+	vertical-align: middle;
+	display: inline-block;
 }

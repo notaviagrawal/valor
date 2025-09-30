@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Valor - Optimized 3D Showcase</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <link type="text/css" rel="stylesheet" href="main.css">
+</head>
+
+<body>
+
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div id="loading-content">
+            <h1 id="loading-title">valor</h1>
+            <div id="loading-bar-container">
+                <div id="loading-bar"></div>
+            </div>
+            <p id="loading-text">Initializing optimizations...</p>
+            <div id="quality-selector">
+                <label for="quality-select">Quality</label>
+                <select id="quality-select">
+                    <option value="auto">Auto</option>
+                    <option value="medium">Medium</option>
+                    <option value="high-mid">High</option>
+                    <option value="very-high">Very High</option>
+                    <option value="ultra">Ultra</option>
+                    <option value="max">Maximum</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div id="info">
+        <h1>valor</h1>
+    </div>
+
+    <!-- Text Section (hidden by default) -->
+    <div id="text-section">
+        <p>valor is an alternative data marketplace on <img src="world-logo.svg" alt="World" id="world-logo"
+                onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';" /><span
+                style="display:none;">world</span></p>
+    </div>
+
+    <script type="importmap">
+		{
+			"imports": {
+				"three": "./build/three.module.js",
+				"three/addons/": "./jsm/"
+			}
+		}
+	</script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { PMREMCache } from './pmrem-cache.js';
+        import { LODSelector } from './lod-selector.js';
+
+        // Register service worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js').then(reg => {
+                console.log('✅ Service Worker registered');
+            });
+        }
+
+        const params = {
+            autoRotate: true,
+            autoRotateBackground: true,
+            metalness: 1.0,
+            roughness: 0.0,
+            exposure: 1.0,
+            backgroundImage: 'alien-planet.jpg',
+            textureQuality: 'auto'  // Will be set from selector
+        };
+
+        // Get quality from selector on load
+        const qualitySelector = document.getElementById('quality-select');
+        if (qualitySelector) {
+            qualitySelector.value = params.textureQuality;
+            qualitySelector.addEventListener('change', (e) => {
+                params.textureQuality = e.target.value;
+                console.log('Quality changed to:', params.textureQuality);
+            });
+        }
+
+        const availableTextures = [
+            "aerial-mountain.jpg", "alien-planet.jpg", "bridge.jpg",
+            "city-sunset.jpg", "cloudscape-sunset.jpg", "desert.jpg",
+            "earth-space.jpg", "foggy-morning.jpg", "hilly-terrain.jpg",
+            "pink-sunrise.jpg", "reflective-hall.jpg", "sci-fi-abstract.jpg",
+            "sci-fi-planet.jpg", "shanghai.jpg", "sunflowers.jpg",
+            "sunset-mountain.jpg", "sunset-ocean.jpg", "vaporwave.jpg"
+        ];
+
+        const preloadedScenes = [
+            "alien-planet.jpg", "desert.jpg", "sunflowers.jpg",
+            "foggy-morning.jpg", "sci-fi-abstract.jpg", "city-sunset.jpg"
+        ];
+
+        let renderer, scene, camera, controls, model, pivotGroup, gltfLoader;
+        let pmremCache, lodSelector, selectedQuality;
+        let textureCache = new Map();
+        let loadingTextures = new Set();
+        let currentTextureIndex = 0;
+        let nextTextureIndex = 1;
+        let backgroundRotationTimer = null;
+        let currentEnvTexture = null;
+        let currentSceneInRotation = 0;
+        let remainingScenes = [];
+        let allScenesLoaded = false;
+        let textureWorker;
+
+        // Performance monitoring (minimal)
+        let frameCount = 0;
+
+        // Scroll interaction variables
+        let scrollAccumulator = 0;
+        let rotationSpeed = 0.005; // Base rotation speed
+        let baseRotationSpeed = 0.005; // Constant base speed
+        let scrollThreshold = 15000; // Threshold to trigger transition (high value for Mac trackpad sensitivity)
+        let isTextSectionVisible = false;
+        let isTransitioning = false;
+        let scrollEnabled = false; // Disabled until loading completes
+        let lastScrollTime = 0; // Track when last scroll happened
+        let scrollDecayRate = 0.95; // Decay factor for rotation slowdown (lower = faster decay)
+
+        // Zoom variables
+        let currentZoom = -6.0; // Initial camera Z position
+        let minZoom = -15.0; // Furthest zoom out
+        let maxZoom = -2.0; // Closest zoom in
+
+        // Touch/pinch variables
+        let initialPinchDistance = 0;
+        let lastPinchDistance = 0;
+
+        init();
+
+        async function init() {
+            // Disable scrolling during loading
+            document.body.classList.add('no-scroll');
+
+            // Setup renderer - OPTIMIZED for 60 FPS
+            renderer = new THREE.WebGLRenderer({
+                antialias: true,
+                powerPreference: "high-performance",
+                stencil: false, // Disable stencil buffer (not needed)
+                depth: true,
+                alpha: false // Opaque canvas
+            });
+
+            // Initialize LOD selector FIRST (before using it!)
+            lodSelector = new LODSelector(renderer);
+            selectedQuality = lodSelector.deviceTier.quality; // Set auto-detected quality
+            pmremCache = new PMREMCache(renderer, 2, THREE); // Reduce cache from 5 to 2!
+
+            // Now setup renderer with device-adaptive settings
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, lodSelector.deviceTier.targetDPR)); // Adaptive DPR
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = params.exposure;
+            renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+            // FORCE 60 FPS - Prevent browser throttling
+            renderer.domElement.style.willChange = 'transform';
+
+            // Prevent browser from throttling when idle
+            renderer.domElement.setAttribute('tabindex', '0'); // Make canvas focusable
+            renderer.domElement.focus(); // Focus it
+
+            // Keep canvas "active" to prevent 30fps throttling
+            const keepActive = () => {
+                renderer.domElement.dispatchEvent(new MouseEvent('mousemove', {
+                    bubbles: false,
+                    cancelable: false,
+                    view: window
+                }));
+            };
+            setInterval(keepActive, 1000); // Trigger every second to keep browser awake
+
+            console.log(`🎯 Renderer configured for 60 FPS (device-adaptive DPR: ${lodSelector.deviceTier.targetDPR})`);
+
+            // Performance optimizations
+            renderer.info.autoReset = false; // Manual reset for better performance
+            renderer.shadowMap.enabled = false; // No shadows needed
+
+            scene = new THREE.Scene();
+
+            // Create pivot group FIRST (before animation loop starts)
+            pivotGroup = new THREE.Group();
+            scene.add(pivotGroup);
+
+            // NOW start the animation loop
+            renderer.setAnimationLoop(render);
+
+            // Quality is set from selector
+
+            // Initialize texture worker
+            textureWorker = new Worker('./texture-worker.js');
+            textureWorker.onmessage = handleWorkerMessage;
+
+            // Load GLTF model
+            gltfLoader = new GLTFLoader();
+            gltfLoader.load('valerlogo.gltf', function (gltf) {
+                model = gltf.scene;
+                model.traverse(function (child) {
+                    if (child.isMesh) {
+                        child.material = new THREE.MeshStandardMaterial({
+                            roughness: params.roughness,
+                            metalness: params.metalness
+                        });
+                    }
+                });
+
+                const boundingBox = new THREE.Box3().setFromObject(model);
+                const center = new THREE.Vector3();
+                boundingBox.getCenter(center);
+                model.position.sub(center);
+                model.scale.setScalar(50);
+
+                const scaledBoundingBox = new THREE.Box3().setFromObject(model);
+                const scaledCenter = new THREE.Vector3();
+                scaledBoundingBox.getCenter(scaledCenter);
+                model.position.sub(scaledCenter);
+
+                pivotGroup.position.set(0, 0, 0);
+                pivotGroup.add(model);
+                pivotGroup.rotation.x = -Math.PI / 2;
+                pivotGroup.rotation.y = 0;
+                pivotGroup.rotation.z = -Math.PI / 2;
+            });
+
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 500);
+            camera.position.set(0.0, 0.0, -6.0);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableZoom = false; // Disable OrbitControls zoom to prevent conflicts
+            controls.enablePan = false; // Disable panning for cleaner interaction
+            controls.enableRotate = true; // Allow manual rotation
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+
+            // Smart texture loading with USER-SELECTED quality
+            const loadEnvironment = async function (imageName, isPreload = false) {
+                const cacheKey = `${imageName}_${params.textureQuality}`;  // Include quality in cache key
+
+                if (textureCache.has(cacheKey)) {
+                    const { texture, envMap } = textureCache.get(cacheKey);
+                    if (!isPreload) {
+                        scene.background = texture;
+                        scene.environment = envMap;
+                    }
+                    return { texture, envMap };
+                }
+
+                if (loadingTextures.has(cacheKey)) {
+                    return new Promise((resolve) => {
+                        const checkLoading = () => {
+                            if (textureCache.has(cacheKey)) {
+                                resolve(textureCache.get(cacheKey));
+                            } else {
+                                setTimeout(checkLoading, 100);
+                            }
+                        };
+                        checkLoading();
+                    });
+                }
+
+                loadingTextures.add(cacheKey);
+                const basename = imageName.replace(/\.(jpg|jpeg|png)$/i, '');
+
+                // Use user-selected quality OR auto-detected
+                const quality = params.textureQuality === 'auto' ? selectedQuality : params.textureQuality;
+
+                // Map quality levels to actual folders
+                const qualityMap = {
+                    'medium': { folder: 'medium', ext: 'webp' },
+                    'high-mid': { folder: 'high-mid', ext: 'jpg' },
+                    'very-high': { folder: 'very-high', ext: 'jpg' },
+                    'ultra': { folder: 'ultra', ext: 'jpg' },
+                    'max': { folder: 'max', ext: 'jpg' }
+                };
+
+                const qualityInfo = qualityMap[quality] || qualityMap['medium'];
+                const texturePath = `textures/processed/${qualityInfo.folder}/${basename}.${qualityInfo.ext}`;
+
+                return new Promise((resolve) => {
+                    const textureLoader = new THREE.TextureLoader();
+                    textureLoader.load(texturePath, function (texture) {
+                        texture.mapping = THREE.EquirectangularReflectionMapping;
+                        texture.colorSpace = THREE.SRGBColorSpace;
+
+                        // Generate PMREM environment map with cache
+                        const pmremStart = performance.now();
+                        const envMap = pmremCache.get(texture, cacheKey);
+                        const pmremTime = performance.now() - pmremStart;
+
+                        if (pmremTime > 10) {
+                            console.log(`🔥 PMREM generation took ${pmremTime.toFixed(2)}ms for ${imageName}`);
+                        }
+
+                        textureCache.set(cacheKey, { texture, envMap });
+                        loadingTextures.delete(cacheKey);
+
+                        if (!isPreload) {
+                            scene.background = texture;
+                            scene.environment = envMap;
+                        }
+
+                        resolve({ texture, envMap });
+                    });
+                });
+            };
+
+            // Instant texture swap - NO crossfade to prevent frame drops
+            const crossfadeToTexture = async function (imageName) {
+                const { texture, envMap } = await loadEnvironment(imageName, false);
+                currentEnvTexture = texture;
+                // Direct assignment - instant, no animation to cause drops
+                scene.background = texture;
+                scene.environment = envMap;
+            };
+
+            // Auto-rotate backgrounds WITH AGGRESSIVE MEMORY CLEANUP
+            const rotateBackground = function () {
+                if (!params.autoRotateBackground) return;
+
+                // DISPOSE OLD TEXTURES to save memory!
+                const oldIndex = currentTextureIndex;
+
+                currentTextureIndex = nextTextureIndex;
+                nextTextureIndex = (currentTextureIndex + 1) % availableTextures.length;
+                const currentTextureName = availableTextures[currentTextureIndex];
+                params.backgroundImage = currentTextureName;
+                currentSceneInRotation++;
+
+                if (currentSceneInRotation === 6 && !allScenesLoaded) {
+                    setTimeout(() => loadRemainingScenes(), 2500);
+                }
+
+                crossfadeToTexture(currentTextureName).then(() => {
+                    // CRITICAL: Dispose old texture to free GPU memory!
+                    if (oldIndex !== currentTextureIndex) {
+                        const oldTextureName = availableTextures[oldIndex];
+                        const cacheKey = oldTextureName;
+                        if (textureCache.has(cacheKey)) {
+                            const { texture, envMap } = textureCache.get(cacheKey);
+                            texture.dispose();
+                            // Don't dispose envMap - it's cached in pmremCache
+                            textureCache.delete(cacheKey);
+                            console.log(`🗑️ Disposed texture: ${oldTextureName} to save memory`);
+                        }
+                    }
+                });
+            };
+
+            const startBackgroundRotation = function () {
+                if (backgroundRotationTimer) clearInterval(backgroundRotationTimer);
+                if (params.autoRotateBackground) {
+                    backgroundRotationTimer = setInterval(rotateBackground, 5000);
+                    console.log('🎬 Background rotation: 5s intervals');
+                }
+            };
+
+            const stopBackgroundRotation = function () {
+                if (backgroundRotationTimer) {
+                    clearInterval(backgroundRotationTimer);
+                    backgroundRotationTimer = null;
+                }
+            };
+
+            // Preload initial scenes - ONLY 3 instead of 6 to save memory!
+            async function preloadInitialScenes() {
+                const loadingBar = document.getElementById('loading-bar');
+                const loadingText = document.getElementById('loading-text');
+                const startTime = performance.now();
+                const loadingDuration = 3000; // 3 seconds
+
+                // ONLY PRELOAD 3 SCENES to reduce memory usage!
+                const initialScenes = preloadedScenes.slice(0, 3);
+                remainingScenes = availableTextures.filter(t => !initialScenes.includes(t));
+                console.log(`🎬 Preloading ${initialScenes.length} scenes for memory efficiency...`);
+
+                // Update quality from selector before loading
+                params.textureQuality = qualitySelector.value;
+
+                for (let i = 0; i < initialScenes.length; i++) {
+                    const sceneName = initialScenes[i];
+                    loadingText.textContent = `Loading ${sceneName}...`;
+                    await loadEnvironment(sceneName, true);
+                    const progress = ((i + 1) / initialScenes.length) * 100;
+                    loadingBar.style.width = `${progress}%`;
+                }
+
+                // Wait for remaining time to reach 3 seconds
+                const elapsedTime = performance.now() - startTime;
+                const remainingTime = Math.max(0, loadingDuration - elapsedTime);
+
+                loadingText.textContent = 'Ready!';
+                console.log(`✅ ${preloadedScenes.length} scenes ready!`);
+
+                setTimeout(() => {
+                    document.getElementById('loading-screen').classList.add('fade-out');
+                    setTimeout(() => {
+                        document.getElementById('loading-screen').remove();
+                        // Enable scrolling after loading completes
+                        document.body.classList.remove('no-scroll');
+                        scrollEnabled = true;
+                        console.log('✅ Scroll enabled! You can now scroll to speed up rotation.');
+                        currentTextureIndex = 0;
+                        nextTextureIndex = 1;
+                        currentSceneInRotation = 1;
+                        crossfadeToTexture(availableTextures[0]).then(() => {
+                            startBackgroundRotation();
+                        });
+                    }, 500);
+                }, remainingTime);
+            }
+
+            // Background load remaining scenes - LOAD ON DEMAND, not all at once!
+            async function loadRemainingScenes() {
+                // DON'T preload all remaining scenes - just mark as ready to load on demand
+                allScenesLoaded = true;
+                console.log(`✅ Ready to load remaining scenes on demand (memory efficient mode)`);
+            }
+
+            // Handle worker messages
+            function handleWorkerMessage(e) {
+                if (e.data.type === 'decoded') {
+                    console.log(`🖼️ Worker decoded texture: ${e.data.id}`);
+                }
+            }
+
+            // Start preloading
+            preloadInitialScenes();
+
+            window.addEventListener('resize', onWindowResize);
+
+            // Scroll event listeners - listen on both window and document for compatibility
+            document.addEventListener('wheel', onScroll, { passive: false });
+            window.addEventListener('wheel', onScroll, { passive: false });
+            window.addEventListener('scroll', onScrollPosition, { passive: false });
+
+            // Touch event listeners for pinch-to-zoom
+            window.addEventListener('touchstart', onTouchStart, { passive: false });
+            window.addEventListener('touchmove', onTouchMove, { passive: false });
+            window.addEventListener('touchend', onTouchEnd, { passive: false });
+        }
+
+        function onScroll(event) {
+            if (!scrollEnabled || isTransitioning) {
+                event.preventDefault();
+                return;
+            }
+
+            const delta = event.deltaY;
+
+            // Check if Command (Mac) or Ctrl (Windows/Linux) is pressed for zoom
+            const isZoomModifier = event.metaKey || event.ctrlKey;
+
+            if (isZoomModifier) {
+                // Zoom functionality
+                event.preventDefault();
+                const zoomSpeed = 0.05;
+                currentZoom += delta > 0 ? zoomSpeed : -zoomSpeed;
+                currentZoom = Math.max(minZoom, Math.min(maxZoom, currentZoom));
+                camera.position.z = currentZoom;
+                return;
+            }
+
+            if (!isTextSectionVisible) {
+                // Always prevent default scroll in 3D scene to keep rotation effect
+                event.preventDefault();
+
+                // Only increase speed on downward scrolls
+                if (delta > 0) {
+                    lastScrollTime = performance.now(); // Update last scroll time
+
+                    // Speed up rotation based on downward scrolls only
+                    scrollAccumulator += delta;
+                    rotationSpeed = baseRotationSpeed + (scrollAccumulator / 15000); // Slower speed increase per scroll
+
+                    // Check if threshold is reached
+                    if (scrollAccumulator >= scrollThreshold) {
+                        showTextSection();
+                    }
+                }
+            } else {
+                // If scrolling up from text section, go back
+                if (delta < 0) {
+                    event.preventDefault();
+                    hideTextSection();
+                }
+            }
+        }
+
+        // Touch event handlers for pinch-to-zoom
+        function onTouchStart(event) {
+            if (!scrollEnabled || isTransitioning) {
+                return;
+            }
+
+            if (event.touches.length === 2) {
+                event.preventDefault();
+                const dx = event.touches[0].pageX - event.touches[1].pageX;
+                const dy = event.touches[0].pageY - event.touches[1].pageY;
+                initialPinchDistance = Math.sqrt(dx * dx + dy * dy);
+                lastPinchDistance = initialPinchDistance;
+            }
+        }
+
+        function onTouchMove(event) {
+            if (!scrollEnabled || isTransitioning) {
+                return;
+            }
+
+            if (event.touches.length === 2) {
+                event.preventDefault();
+                const dx = event.touches[0].pageX - event.touches[1].pageX;
+                const dy = event.touches[0].pageY - event.touches[1].pageY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                // Calculate zoom based on pinch distance change
+                const delta = lastPinchDistance - distance;
+                const zoomSpeed = 0.01;
+                currentZoom += delta * zoomSpeed;
+                currentZoom = Math.max(minZoom, Math.min(maxZoom, currentZoom));
+                camera.position.z = currentZoom;
+
+                lastPinchDistance = distance;
+            }
+        }
+
+        function onTouchEnd(event) {
+            if (event.touches.length < 2) {
+                initialPinchDistance = 0;
+                lastPinchDistance = 0;
+            }
+        }
+
+        function onScrollPosition(event) {
+            // This handler is kept for potential future use
+            // Main scroll logic is now in onScroll (wheel event)
+        }
+
+        function showTextSection() {
+            if (isTransitioning || isTextSectionVisible) return;
+
+            isTransitioning = true;
+            isTextSectionVisible = true;
+
+            const textSection = document.getElementById('text-section');
+            textSection.classList.add('visible');
+
+            // Completely halt the scene - stop animation loop
+            renderer.setAnimationLoop(null);
+
+            setTimeout(() => {
+                isTransitioning = false;
+            }, 600);
+        }
+
+        function hideTextSection() {
+            if (isTransitioning || !isTextSectionVisible) return;
+
+            isTransitioning = true;
+            isTextSectionVisible = false;
+            scrollAccumulator = 0; // Reset accumulator
+            rotationSpeed = baseRotationSpeed; // Reset rotation speed to base
+            currentZoom = -6.0; // Reset zoom to initial position
+            camera.position.z = currentZoom;
+
+            const textSection = document.getElementById('text-section');
+            textSection.classList.remove('visible');
+
+            // Resume the scene - restart animation loop
+            renderer.setAnimationLoop(render);
+
+            setTimeout(() => {
+                isTransitioning = false;
+            }, 600);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function render() {
+            // Update model materials ONLY when changed (not every frame)
+            if (model && (params.roughness !== model.userData.lastRoughness || params.metalness !== model.userData.lastMetalness)) {
+                model.traverse(function (child) {
+                    if (child.isMesh) {
+                        child.material.roughness = params.roughness;
+                        child.material.metalness = params.metalness;
+                    }
+                });
+                model.userData.lastRoughness = params.roughness;
+                model.userData.lastMetalness = params.metalness;
+            }
+
+            if (params.autoRotate && pivotGroup) {
+                // Apply decay to rotation speed when not scrolling
+                const timeSinceLastScroll = performance.now() - lastScrollTime;
+                if (timeSinceLastScroll > 150 && !isTextSectionVisible) { // 150ms delay before decay starts
+                    // Gradually slow down to base speed
+                    if (rotationSpeed > baseRotationSpeed) {
+                        rotationSpeed = Math.max(baseRotationSpeed, rotationSpeed * scrollDecayRate);
+                        // Also decay the scroll accumulator to match
+                        scrollAccumulator = Math.max(0, scrollAccumulator * scrollDecayRate);
+                    }
+                }
+
+                pivotGroup.rotation.z += rotationSpeed;
+            }
+
+            // Update exposure only when changed
+            if (renderer.toneMappingExposure !== params.exposure) {
+                renderer.toneMappingExposure = params.exposure;
+            }
+
+            if (controls) {
+                controls.update();
+            }
+
+            renderer.render(scene, camera);
+
+            // Force continuous rendering at 60fps - prevents browser throttling
+            if (typeof requestAnimationFrame !== 'undefined') {
+                requestAnimationFrame(() => { }); // Keep RAF queue active
+            }
+        }
+    </script>
+</body>
+
+</html>

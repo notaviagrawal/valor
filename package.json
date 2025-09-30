@@ -5,7 +5,10 @@
   "main": "webgl_loader_texture_ultrahdr.html",
   "scripts": {
     "dev": "python3 -m http.server 3000",
-    "start": "python3 -m http.server 3000"
+    "start": "python3 -m http.server 3000",
+    "build:textures": "node build-textures-simple.js",
+    "build:textures:full": "node build-textures.js",
+    "update:textures": "node update-textures.js"
   },
   "keywords": [
     "threejs",
@@ -15,5 +18,8 @@
     "showcase"
   ],
   "author": "Avi Agrawal",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "sharp": "^0.33.0"
+  }
 }
