@@ -12,11 +12,6 @@
 			<h1>valor</h1>
 		</div>
 
-		<div id="loading-indicator" style="display: none;">
-			<div class="loading-spinner"></div>
-			<p>Loading texture...</p>
-		</div>
-
 		<script type="importmap">
 			{
 				"imports": {
@@ -82,30 +77,6 @@
 			];
 
 			let renderer, scene, camera, controls, model, pivotGroup, loader, gltfLoader;
-			
-			// Performance and memory management
-			const textureCache = new Map();
-			const loadedTextures = new Set();
-			let currentTexture = null;
-			let performanceMonitor = {
-				fps: 0,
-				frameCount: 0,
-				lastTime: performance.now(),
-				adaptiveQuality: true
-			};
-
-			// Register service worker for caching
-			if ('serviceWorker' in navigator) {
-				window.addEventListener('load', () => {
-					navigator.serviceWorker.register('/sw.js')
-						.then((registration) => {
-							console.log('SW registered: ', registration);
-						})
-						.catch((registrationError) => {
-							console.log('SW registration failed: ', registrationError);
-						});
-				});
-			}
 
 			init();
 
@@ -191,97 +162,20 @@
 				loader = new UltraHDRLoader();
 				loader.setDataType( THREE.FloatType );
 
-				// Optimized texture loading with caching and memory management
-				const loadEnvironment = async function ( imageName = 'spruit_sunrise_4k.hdr.jpg', type = 'HalfFloatType' ) {
-					
-					// Check cache first
-					const cacheKey = `${imageName}_${type}`;
-					if (textureCache.has(cacheKey)) {
-						const cachedTexture = textureCache.get(cacheKey);
-						applyTexture(cachedTexture);
-						return;
-					}
+				const loadEnvironment = function ( imageName = 'spruit_sunrise_4k.hdr.jpg', type = 'HalfFloatType' ) {
 
-					// Dispose previous texture to free memory
-					if (currentTexture) {
-						disposeTexture(currentTexture);
-					}
+					loader.setDataType( THREE[ type ] );
 
-					// Show loading indicator
-					showLoadingIndicator();
-
-					try {
-						loader.setDataType( THREE[ type ] );
-
-						const texture = await new Promise((resolve, reject) => {
-							loader.load( 
-								`textures/equirectangular/${imageName}`, 
-								resolve, 
-								undefined, 
-								reject 
-							);
-						});
+					loader.load( `textures/equirectangular/${imageName}`, function ( texture ) {
 
 						texture.mapping = THREE.EquirectangularReflectionMapping;
 						texture.needsUpdate = true;
 
-						// Cache the texture
-						textureCache.set(cacheKey, texture);
-						loadedTextures.add(texture);
+						scene.background = texture;
+						scene.environment = texture;
 
-						// Apply texture and update current reference
-						currentTexture = texture;
-						applyTexture(texture);
+					} );
 
-						// Hide loading indicator
-						hideLoadingIndicator();
-
-					} catch (error) {
-						console.error('Failed to load texture:', error);
-						hideLoadingIndicator();
-					}
-				};
-
-				// Apply texture to scene
-				const applyTexture = function(texture) {
-					scene.background = texture;
-					scene.environment = texture;
-				};
-
-				// Dispose texture to free memory
-				const disposeTexture = function(texture) {
-					if (texture && texture.dispose) {
-						texture.dispose();
-					}
-				};
-
-				// Clean up unused textures from cache
-				const cleanupTextureCache = function() {
-					const maxCacheSize = 5; // Keep only 5 textures in memory
-					if (textureCache.size > maxCacheSize) {
-						const entries = Array.from(textureCache.entries());
-						const toRemove = entries.slice(0, textureCache.size - maxCacheSize);
-						
-						toRemove.forEach(([key, texture]) => {
-							disposeTexture(texture);
-							textureCache.delete(key);
-						});
-					}
-				};
-
-				// Loading indicator functions
-				const showLoadingIndicator = function() {
-					const indicator = document.getElementById('loading-indicator');
-					if (indicator) {
-						indicator.style.display = 'block';
-					}
-				};
-
-				const hideLoadingIndicator = function() {
-					const indicator = document.getElementById('loading-indicator');
-					if (indicator) {
-						indicator.style.display = 'none';
-					}
 				};
 
 				loadEnvironment( params.backgroundImage, params.type );
@@ -292,17 +186,16 @@
 				gui.add( params, 'metalness', 0, 1, 0.01 );
 				gui.add( params, 'roughness', 0, 1, 0.01 );
 				gui.add( params, 'exposure', 0, 4, 0.01 );
-				gui.add( params, 'backgroundImage', availableTextures ).onChange( async ( value ) => {
-					await loadEnvironment( value, params.type );
-					cleanupTextureCache(); // Clean up old textures
-				} );
-				gui.add( params, 'type', [ 'HalfFloatType', 'FloatType' ] ).onChange( async ( value ) => {
-					await loadEnvironment( params.backgroundImage, value );
-					cleanupTextureCache(); // Clean up old textures
-				} );
+				gui.add( params, 'backgroundImage', availableTextures ).onChange( ( value ) => {
 
-				// Add performance monitoring
-				addPerformanceMonitor();
+					loadEnvironment( value, params.type );
+			
+				} );
+				gui.add( params, 'type', [ 'HalfFloatType', 'FloatType' ] ).onChange( ( value ) => {
+
+					loadEnvironment( params.backgroundImage, value );
+			
+				} );
 
 				gui.open();
 
@@ -321,20 +214,6 @@
 			}
 
 			function render() {
-				const currentTime = performance.now();
-				performanceMonitor.frameCount++;
-
-				// Update FPS every second
-				if (currentTime - performanceMonitor.lastTime >= 1000) {
-					performanceMonitor.fps = Math.round((performanceMonitor.frameCount * 1000) / (currentTime - performanceMonitor.lastTime));
-					performanceMonitor.frameCount = 0;
-					performanceMonitor.lastTime = currentTime;
-					
-					// Adaptive quality based on FPS
-					if (performanceMonitor.adaptiveQuality) {
-						adaptQualityBasedOnFPS();
-					}
-				}
 
 				if ( model ) {
 					// Update material properties for all meshes
@@ -347,7 +226,9 @@
 				}
 
 				if ( params.autoRotate ) {
+
 					pivotGroup.rotation.z += 0.005; // Rotate on Z-axis
+
 				}
 
 				renderer.toneMappingExposure = params.exposure;
@@ -357,39 +238,8 @@
 				}
 
 				renderer.render( scene, camera );
+
 			}
-
-			// Adaptive quality based on performance
-			const adaptQualityBasedOnFPS = function() {
-				const fps = performanceMonitor.fps;
-				
-				if (fps < 30) {
-					// Low FPS - reduce quality
-					renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1));
-					if (renderer.shadowMap) {
-						renderer.shadowMap.enabled = false;
-					}
-				} else if (fps > 55) {
-					// High FPS - increase quality
-					renderer.setPixelRatio(window.devicePixelRatio);
-					if (renderer.shadowMap) {
-						renderer.shadowMap.enabled = true;
-					}
-				}
-			};
-
-			// Performance monitoring GUI
-			const addPerformanceMonitor = function() {
-				const perfFolder = gui.addFolder('Performance');
-				perfFolder.add(performanceMonitor, 'fps').listen();
-				perfFolder.add(performanceMonitor, 'adaptiveQuality');
-				perfFolder.add({ 'Clear Cache': () => {
-					textureCache.forEach((texture) => disposeTexture(texture));
-					textureCache.clear();
-					loadedTextures.clear();
-				}}, 'Clear Cache');
-				perfFolder.open();
-			};
 
 		</script>
 	</body>
