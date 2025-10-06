@@ -90,15 +90,16 @@
 			const preloadedScenes = [
 				"alien-planet.jpg",
 				"desert.jpg",
-				"sunflowers.jpg",
 				"foggy-morning.jpg",
 				"sci-fi-abstract.jpg",
-				"city-sunset.jpg"
+				"bridge.jpg",
+				"sunflowers.jpg",
+				"pink-sunrise.jpg"
 			];
 			let preloadedScenesQueue = [...preloadedScenes];
 			let isUsingPreloadedScenes = false;
-			let currentRotationInterval = 10000; // Start with 10s, will change to 5s for preloaded
-			let remainingScenes = []; // Will hold scenes that weren't preloaded
+			let currentRotationInterval = 5000; // Fixed 5s rotation
+			let remainingScenes = [];
 
 			init();
 
@@ -180,6 +181,8 @@
 
 				console.log('OrbitControls:', OrbitControls);
 				controls = new OrbitControls( camera, renderer.domElement );
+				// Disable right-click panning while keeping rotation and zoom
+				controls.enablePan = false;
 			
 				loader = new UltraHDRLoader();
 				loader.setDataType( THREE.FloatType );
@@ -237,11 +240,9 @@
 					});
 				};
 
-				// Preload next texture immediately
+				// Preload next texture immediately (for 5s preloaded loop)
 				const preloadNextTexture = function() {
-					// Use remaining scenes array when not using preloaded scenes
-					const textureArray = isUsingPreloadedScenes ? availableTextures : remainingScenes;
-					const nextTextureName = textureArray[nextTextureIndex];
+					const nextTextureName = preloadedScenes[nextTextureIndex % preloadedScenes.length];
 					if (nextTextureName && !textureCache.has(`${nextTextureName}_${params.type}`)) {
 						console.log(`Preloading: ${nextTextureName}`);
 						loadEnvironment(nextTextureName, params.type, true);
@@ -260,8 +261,8 @@
 					}
 				};
 
-				// Schedule preloading mid-interval (~6s into the 10s cycle), using idle time
-				const scheduleMidIntervalPreload = function(delayMs = 6000) {
+				// Schedule preloading mid-interval (~2.5s into the 5s cycle), using idle time
+				const scheduleMidIntervalPreload = function(delayMs = 2500) {
 					clearPreloadSchedule();
 					preloadTimer = setTimeout(() => {
 						if (window.requestIdleCallback) {
@@ -282,40 +283,11 @@
 					let currentTextureName;
 					let previousPreloadedTexture = null;
 					
-					// Check if we're using preloaded scenes
-					if (isUsingPreloadedScenes && preloadedScenesQueue.length > 0) {
-						// Store the previous preloaded texture to dispose it after loading the next one
-						if (params.backgroundImage && preloadedScenes.includes(params.backgroundImage)) {
-							previousPreloadedTexture = params.backgroundImage;
-						}
-						
-						// Use next preloaded scene
-						currentTextureName = preloadedScenesQueue.shift();
-						params.backgroundImage = currentTextureName;
-						
-						// If we've exhausted preloaded scenes, switch to remaining scenes
-						if (preloadedScenesQueue.length === 0) {
-							isUsingPreloadedScenes = false;
-							currentRotationInterval = 10000; // Switch to 10 seconds
-							
-							// Set up rotation to start with remaining scenes
-							currentTextureIndex = 0;
-							nextTextureIndex = 0;
-							
-							// Restart rotation with new interval
-							stopBackgroundRotation();
-							startBackgroundRotation();
-							
-							console.log('Switching to 10-second rotation intervals with remaining scenes');
-							console.log('Disposing all preloaded scenes...');
-						}
-					} else {
-						// Normal rotation through remaining textures (excluding preloaded ones)
-						currentTextureIndex = nextTextureIndex;
-						nextTextureIndex = (currentTextureIndex + 1) % remainingScenes.length;
-						currentTextureName = remainingScenes[currentTextureIndex];
-						params.backgroundImage = currentTextureName;
-					}
+					// Always rotate through preloaded scenes in a loop
+					currentTextureIndex = nextTextureIndex % preloadedScenes.length;
+					nextTextureIndex = (currentTextureIndex + 1) % preloadedScenes.length;
+					currentTextureName = preloadedScenes[currentTextureIndex];
+					params.backgroundImage = currentTextureName;
 
 					// Load current texture (should be instant if preloaded)
 					loadEnvironment(currentTextureName, params.type).then(() => {
@@ -326,48 +298,8 @@
 							}
 						});
 						
-						// Dispose previous preloaded texture after the new one is loaded
-						if (previousPreloadedTexture) {
-							const previousCacheKey = `${previousPreloadedTexture}_${params.type}`;
-							if (textureCache.has(previousCacheKey)) {
-								const oldTexture = textureCache.get(previousCacheKey);
-								oldTexture.dispose();
-								textureCache.delete(previousCacheKey);
-								console.log(`Disposed preloaded scene: ${previousPreloadedTexture}`);
-							}
-						}
-						
-						// If we just finished all preloaded scenes, dispose the last one shown
-						if (!isUsingPreloadedScenes && preloadedScenesQueue.length === 0) {
-							const lastPreloadedTexture = params.backgroundImage;
-							if (preloadedScenes.includes(lastPreloadedTexture)) {
-								const lastCacheKey = `${lastPreloadedTexture}_${params.type}`;
-								if (textureCache.has(lastCacheKey)) {
-									const oldTexture = textureCache.get(lastCacheKey);
-									oldTexture.dispose();
-									textureCache.delete(lastCacheKey);
-									console.log(`Disposed final preloaded scene: ${lastPreloadedTexture}`);
-								}
-							}
-						}
-
-						// Only schedule mid-interval preload if not using preloaded scenes
-						if (!isUsingPreloadedScenes) {
-							// Schedule preloading mid-interval (6s into 10s cycle)
-							scheduleMidIntervalPreload(6000);
-							
-							// Clean up old cache (keep only current and next)
-							const previousIndex = (currentTextureIndex - 1 + remainingScenes.length) % remainingScenes.length;
-							const previousTextureName = remainingScenes[previousIndex];
-							const previousCacheKey = `${previousTextureName}_${params.type}`;
-							
-							if (textureCache.has(previousCacheKey)) {
-								const oldTexture = textureCache.get(previousCacheKey);
-								oldTexture.dispose();
-								textureCache.delete(previousCacheKey);
-								console.log(`Cleaned up cache for: ${previousTextureName}`);
-							}
-						}
+						// Always schedule mid-interval preload for 5s cycle
+						scheduleMidIntervalPreload(2500);
 					});
 				};
 
@@ -392,14 +324,12 @@
 					}
 				};
 
-				// Preload the 6 initial scenes
+				// Preload the 7 initial scenes
 				async function preloadInitialScenes() {
 					const loadingBar = document.getElementById('loading-bar');
 					const loadingText = document.getElementById('loading-text');
 					
-					// Calculate remaining scenes (all scenes except preloaded ones)
-					remainingScenes = availableTextures.filter(texture => !preloadedScenes.includes(texture));
-					console.log(`Preloaded scenes: ${preloadedScenes.length}, Remaining scenes: ${remainingScenes.length}`);
+					console.log(`Preloading scenes: ${preloadedScenes.length}`);
 					
 					for (let i = 0; i < preloadedScenes.length; i++) {
 						const sceneName = preloadedScenes[i];
@@ -422,9 +352,9 @@
 						setTimeout(() => {
 							loadingScreen.remove();
 							
-							// Start with preloaded scenes
+						// Start with preloaded scenes loop at 5s
 							isUsingPreloadedScenes = true;
-							currentRotationInterval = 5000; // 5 seconds for preloaded
+						currentRotationInterval = 5000; // 5 seconds rotation
 							currentTextureIndex = 0;
 							nextTextureIndex = 1;
 							
