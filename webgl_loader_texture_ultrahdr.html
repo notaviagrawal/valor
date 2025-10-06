@@ -76,6 +76,33 @@
 			];
 
 			let renderer, scene, camera, controls, model, pivotGroup, loader, gltfLoader;
+			let gui = null; // lazily created via window.showGui()
+			let currentProgress = 0; // loading bar progress (0-100)
+			let targetProgress = 0; // target progress we ease toward
+			let progressAnimId = null;
+			const startProgressAnimator = () => {
+				const loadingBar = document.getElementById('loading-bar');
+				if (!loadingBar) return;
+				if (progressAnimId) cancelAnimationFrame(progressAnimId);
+				const step = () => {
+					// exponential smoothing toward target for smoothness regardless of load timing
+					const delta = targetProgress - currentProgress;
+					// if close enough, snap to target; else ease
+					if (Math.abs(delta) < 0.1) {
+						currentProgress = targetProgress;
+					} else {
+						currentProgress += delta * 0.08; // smoothing factor
+					}
+					loadingBar.style.width = `${currentProgress}%`;
+					// keep animating until we reach 100%
+					if (currentProgress < 100) {
+						progressAnimId = requestAnimationFrame(step);
+					} else {
+						progressAnimId = null;
+					}
+				};
+				progressAnimId = requestAnimationFrame(step);
+			};
 			
 			// Smart caching system
 			const textureCache = new Map();
@@ -291,12 +318,14 @@
 
 					// Load current texture (should be instant if preloaded)
 					loadEnvironment(currentTextureName, params.type).then(() => {
-						// Update GUI to reflect current texture
-						gui.controllersRecursive().forEach(controller => {
-							if (controller.property === 'backgroundImage') {
-								controller.updateDisplay();
-							}
-						});
+						// Update GUI to reflect current texture if GUI exists
+						if (gui) {
+							gui.controllersRecursive().forEach(controller => {
+								if (controller.property === 'backgroundImage') {
+									controller.updateDisplay();
+								}
+							});
+						}
 						
 						// Always schedule mid-interval preload for 5s cycle
 						scheduleMidIntervalPreload(2500);
@@ -330,83 +359,91 @@
 					const loadingText = document.getElementById('loading-text');
 					
 					console.log(`Preloading scenes: ${preloadedScenes.length}`);
+					// Initialize progress animator and nudge to 10%
+					currentProgress = 0;
+					targetProgress = 0;
+					loadingBar.style.width = '0%';
+					startProgressAnimator();
+					targetProgress = 10;
 					
 					for (let i = 0; i < preloadedScenes.length; i++) {
 						const sceneName = preloadedScenes[i];
 						loadingText.textContent = `Loading ${sceneName}...`;
 						
 						await loadEnvironment(sceneName, params.type, true);
-						
-						const progress = ((i + 1) / preloadedScenes.length) * 100;
-						loadingBar.style.width = `${progress}%`;
+						// After each image load, update the target percent; animator eases toward it
+						targetProgress = 10 + (((i + 1) / preloadedScenes.length) * 90);
 					}
 					
 					loadingText.textContent = 'Ready!';
+					// Smoothly complete to 100%
+					targetProgress = 100;
 					
-					// Wait a moment then fade out loading screen
-					setTimeout(() => {
+					// Ensure first scene is applied BEFORE hiding loading screen to avoid black flash
+					params.backgroundImage = preloadedScenes[0];
+					await loadEnvironment(preloadedScenes[0], params.type);
+					// Render one frame so the scene is visible under the overlay
+					requestAnimationFrame(() => {
+						renderer.render( scene, camera );
+						// Now fade out loading screen
 						const loadingScreen = document.getElementById('loading-screen');
 						loadingScreen.classList.add('fade-out');
-						
-						// Remove from DOM after fade
+						// Remove after fade completes
 						setTimeout(() => {
 							loadingScreen.remove();
-							
-						// Start with preloaded scenes loop at 5s
+							// Start with preloaded scenes loop at 5s
 							isUsingPreloadedScenes = true;
-						currentRotationInterval = 5000; // 5 seconds rotation
+							currentRotationInterval = 5000; // 5 seconds rotation
 							currentTextureIndex = 0;
 							nextTextureIndex = 1;
-							
-							// Load first preloaded scene
-							params.backgroundImage = preloadedScenes[0];
-							loadEnvironment(preloadedScenes[0], params.type).then(() => {
-								// Start rotation with 5-second intervals
-								startBackgroundRotation();
-							});
+							// Start rotation with 5-second intervals
+							startBackgroundRotation();
 						}, 500);
-					}, 500);
+					});
 				}
 
 				// Start preloading initial scenes
 				preloadInitialScenes();
 
-				const gui = new GUI();
-
-				gui.add( params, 'autoRotate' );
-				gui.add( params, 'autoRotateBackground' ).onChange( ( value ) => {
-					if (value) {
-						startBackgroundRotation();
-					} else {
-						stopBackgroundRotation();
-					}
-				});
-				gui.add( params, 'metalness', 0, 1, 0.01 );
-				gui.add( params, 'roughness', 0, 1, 0.01 );
-				gui.add( params, 'exposure', 0, 4, 0.01 );
-				gui.add( params, 'backgroundImage', availableTextures ).onChange( ( value ) => {
-					// Stop auto rotation when manually changing
-					stopBackgroundRotation();
-					// Cancel any pending mid-interval preload and reschedule
-					clearPreloadSchedule();
-					// Update current index to match selection
-					currentTextureIndex = availableTextures.indexOf(value);
-					nextTextureIndex = (currentTextureIndex + 1) % availableTextures.length;
-					
-					loadEnvironment( value, params.type );
-				} );
-				gui.add( params, 'type', [ 'HalfFloatType', 'FloatType' ] ).onChange( ( value ) => {
-					// Clear cache when type changes
-					textureCache.forEach((texture, key) => {
-						texture.dispose();
+				// Expose a global to build/show the GUI on demand
+				window.showGui = function() {
+					if (gui) return gui;
+					gui = new GUI();
+					gui.add( params, 'autoRotate' );
+					gui.add( params, 'autoRotateBackground' ).onChange( ( value ) => {
+						if (value) {
+							startBackgroundRotation();
+						} else {
+							stopBackgroundRotation();
+						}
 					});
-					textureCache.clear();
-					loadingTextures.clear();
-					
-					loadEnvironment( params.backgroundImage, value );
-				} );
-
-				gui.open();
+					gui.add( params, 'metalness', 0, 1, 0.01 );
+					gui.add( params, 'roughness', 0, 1, 0.01 );
+					gui.add( params, 'exposure', 0, 4, 0.01 );
+					gui.add( params, 'backgroundImage', availableTextures ).onChange( ( value ) => {
+						// Stop auto rotation when manually changing
+						stopBackgroundRotation();
+						// Cancel any pending mid-interval preload and reschedule
+						clearPreloadSchedule();
+						// Update current index to match selection
+						currentTextureIndex = availableTextures.indexOf(value);
+						nextTextureIndex = (currentTextureIndex + 1) % availableTextures.length;
+						
+						loadEnvironment( value, params.type );
+					} );
+					gui.add( params, 'type', [ 'HalfFloatType', 'FloatType' ] ).onChange( ( value ) => {
+						// Clear cache when type changes
+						textureCache.forEach((texture, key) => {
+							texture.dispose();
+						});
+						textureCache.clear();
+						loadingTextures.clear();
+						
+						loadEnvironment( params.backgroundImage, value );
+					} );
+					gui.open();
+					return gui;
+				};
 
 				window.addEventListener( 'resize', onWindowResize );
 
