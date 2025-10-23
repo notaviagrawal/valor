@@ -37,7 +37,7 @@ Valor solves this by creating a decentralized data network with a simple, powerf
 * **Frontend**: Next.js 14 (App Router)
 * **Authentication**: Worldcoin IDKit & NextAuth.js for session management.
 * **UI**: Mini Apps UI Kit for compliance with the World App design system.
-* **Token**: `$VAL` (ERC-20 token on a low-cost L2 like Optimism).
+* **Token**: `$VAL` (ERC-20 token on a low-cost L2 like Optimism). (just a demo version exists currently)
 * **Backend**: Smart contracts for data validation and token distribution.
 
 ## Getting Started
