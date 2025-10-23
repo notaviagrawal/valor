@@ -1,6 +1,13 @@
-````markdown
+<img width="1706" height="1014" alt="Screenshot 2025-10-22 at 11 03 32 PM" src="https://github.com/user-attachments/assets/c4593c68-4581-404b-8c9b-37c9ac878b89" />
+
+<br>
+
 # Valor
 > A decentralized data network for real-time, local price information.
+
+**[Live Website](https://valordata.vercel.app/)** | **[Video Demo](https://www.youtube.com/watch?v=uEj-pFivktc)**
+
+---
 
 Valor is a Worldcoin Mini App that empowers a global community to create a transparent, real-time price ledger for everyday goods. By turning any shopper into a trusted data provider, we are building a more efficient and equitable market for everyone, from individual consumers to national governments.
 
@@ -20,10 +27,10 @@ Valor solves this by creating a decentralized data network with a simple, powerf
 4.  **Empower**: The aggregated, real-time data is made available, creating a transparent public utility that benefits everyone.
 
 ## Key Features
-🌍 **Global Price Ledger**: Crowdsource a real-time database of prices for any item, anywhere.  
-💰 **Micro-Earning Platform**: Earn `$VAL` tokens by contributing data during your daily shopping.  
-🔒 **Sybil-Resistant**: Built on Worldcoin's Proof of Personhood to ensure every data point is from a unique, verified human.  
-📊 **Alternative Data Market**: Creates a unique, high-value dataset for public sector actors, financial institutions, and NGOs.  
+🌍 **Global Price Ledger**: Crowdsource a real-time database of prices for any item, anywhere.
+💰 **Micro-Earning Platform**: Earn `$VAL` tokens by contributing data during your daily shopping.
+🔒 **Sybil-Resistant**: Built on Worldcoin's Proof of Personhood to ensure every data point is from a unique, verified human.
+📊 **Alternative Data Market**: Creates a unique, high-value dataset for public sector actors, financial institutions, and NGOs.
 📈 **Real-Time Inflation Tracking**: Provides an unprecedented ground-level view of economic trends, enabling faster and more effective policy responses.
 
 ## Technology Stack
@@ -40,65 +47,3 @@ This project is a World App Mini App. To run a local instance for development, f
 ```bash
 git clone [https://github.com/your-repo/valor.git](https://github.com/your-repo/valor.git)
 cd valor
-````
-
-#### 2\. Install Dependencies
-
-```bash
-npm install
-```
-
-#### 3\. Set Up Environment Variables
-
-Copy the example file and fill in your details from the Worldcoin Developer Portal.
-
-```bash
-cp .env.example .env.local
-```
-
-Your `.env.local` should contain your App ID and Action ID.
-
-#### 4\. Generate Auth Secret
-
-NextAuth requires a secret key. This command will generate one for you.
-
-```bash
-npx auth secret
-```
-
-#### 5\. Run the Development Server
-
-```bash
-npm run dev
-```
-
-#### 6\. Expose Localhost with Ngrok
-
-In a new terminal window, expose your local server to the internet.
-
-```bash
-ngrok http 3000
-```
-
-Copy the HTTPS URL provided by ngrok.
-
-#### 7\. Update Configs
-
-  * In `.env.local`, set `AUTH_URL` to your ngrok URL.
-  * In `next.config.ts`, add your ngrok domain to `allowedDevOrigins`.
-  * In the Worldcoin Developer Portal, update your Mini App's URL to the ngrok URL.
-
-## The Data Economy
-
-The alternative data market is projected to grow to over $140 billion by 2030. Valor is positioned to capture a unique segment of this market by providing datasets that are currently impossible to acquire.
-
-Our primary customers are public sector actors:
-
-  * **Central Banks & Governments**: To track inflation with real-time accuracy.
-  * **Humanitarian NGOs**: To monitor food prices and predict shortages.
-  * **Economic Researchers**: To study market dynamics with granular, high-frequency data.
-
-By making markets more efficient, Valor's data can help smooth out harsh economic cycles and lead to more stable and prosperous communities.
-
-```
-```
